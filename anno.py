@@ -22,60 +22,85 @@ from chr_info import chr_length
 
 # this cache shouldn't exceed available memory, since the number of families is less than a million
 @functools.cache
-def get_subtype(accession_id: str):
-    url = "https://dfam.org/api/families/" + accession_id
+def get_classification(accession_id: str):
+    url = f"https://dfam.org/api/families/{accession_id}"
+
     response = requests.get(url)
-    return response.json()["classification"]
+    response.raise_for_status()
+
+    classification = response.json()["classification"]
+
+    return classification
 
 
-def get_annotation(sp, chr, op, ed):
+def get_range_annotations(assembly: str, chromosome: str, start: int, end: int):
+    """
+    https://www.dfam.org/releases/Dfam_3.6/apidocs/#operation--annotations-get
+
+    e.g.
+    get_range_annotations("hg38", "chr3", 147733000, 147766820)
+    """
+    relevant_repeat_classes = ["LTR"]
+
     url = "https://dfam.org/api/annotations"
     params = {
-        "assembly": sp,
-        "chrom": chr,
-        "start": op,
-        "end": ed,
+        "assembly": assembly,
+        "chrom": chromosome,
+        "start": start,
+        "end": end,
     }
 
     response = requests.get(url, params=params)
-    results = response.json()
+    response.raise_for_status()
+
+    hits = response.json()["hits"]
+
     annotations = []
-    for hit in results["hits"]:
-        if hit["type"] == "LTR":
+    for hit in hits:
+        if hit["type"] in relevant_repeat_classes:
             annotations.append(
-                [chr, hit["ali_start"], hit["ali_end"], get_subtype(hit["accession"])]
+                [
+                    chromosome,
+                    hit["ali_start"],
+                    hit["ali_end"],
+                    get_classification(hit["accession"]),
+                ]
             )
 
-    save_to_csv(annotations)
+    return annotations
 
 
-def save_to_csv(annotations):
-    with open("test.csv", "a+") as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerows(annotations)
+def download_species_annotations(species: str):
+    for chromosome, length in chr_length.items():
+        for i in tqdm(range(0, length, 100000)):
+            annotations = get_range_annotations(species, chromosome, i, i + 100000)
+            save_annotations(species, chromosome, annotations)
 
 
-# get_annotation('hg38', 'chr3', 147733000, 147766820)
+def save_annotations(species: str, chromosome: str, annotations: list):
+    annotations_csv = f"{species}_{chromosome}.csv"
+    with open(annotations_csv, "a+", newline="") as csv_file:
+        csv_writer = csv.writer(csv_file, delimiter="\t", lineterminator="\n")
+        csv_writer.writerows(annotations)
 
 
-def get_all(args):
-    for chr_name, chr_len in chr_length.items():
-
-        for i in tqdm(range(0, chr_len, 100000)):
-            get_annotation(args.species, chr_name, i, i + 100000)
-
-
-if __name__ == "__main__":
-    # execute only if run as a script
-
+def main():
     parser = argparse.ArgumentParser(description=".")
     parser.add_argument(
         "--species",
         type=str,
         choices=["hg38", "mm10"],
         required=True,
-        help="which species you interested in",
+        help="species for which to download annotations",
     )
 
     args = parser.parse_args()
-    get_all(args)
+
+    download_species_annotations(args.species)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("Interrupted with CTRL-C, exiting...")
