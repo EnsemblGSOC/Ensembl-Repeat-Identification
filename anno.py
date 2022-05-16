@@ -7,8 +7,10 @@ FilePath: /undefined/Users/caiyz/Desktop/anno
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 """
 
+
 import argparse
 import csv
+import functools
 import json
 
 import requests
@@ -18,6 +20,8 @@ from tqdm import tqdm
 from chr_info import chr_length
 
 
+# this cache shouldn't exceed available memory, since the number of families is less than a million
+@functools.cache
 def get_subtype(accession_id: str):
     url = "https://dfam.org/api/families/" + accession_id
     response = requests.get(url)
