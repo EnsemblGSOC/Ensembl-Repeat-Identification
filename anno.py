@@ -8,32 +8,26 @@ Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查�
 """
 
 
+# standard library
 import argparse
 import csv
-import functools
 import json
+import pathlib
 
+from typing import Union
+
+# third party
 import requests
 
 from tqdm import tqdm
 
+# project
 from chr_info import chr_length
 
 
-# this cache shouldn't exceed available memory, since the number of families is less than a million
-@functools.cache
-def get_classification(accession_id: str):
-    url = f"https://dfam.org/api/families/{accession_id}"
-
-    response = requests.get(url)
-    response.raise_for_status()
-
-    classification = response.json()["classification"]
-
-    return classification
-
-
-def get_range_annotations(assembly: str, chromosome: str, start: int, end: int):
+def get_range_annotations(
+    assembly: str, chromosome: str, start: int, end: int, families: dict
+):
     """
     https://www.dfam.org/releases/Dfam_3.6/apidocs/#operation--annotations-get
 
@@ -63,17 +57,19 @@ def get_range_annotations(assembly: str, chromosome: str, start: int, end: int):
                     chromosome,
                     hit["ali_start"],
                     hit["ali_end"],
-                    get_classification(hit["accession"]),
+                    families[hit["accession"]]["classification"],
                 ]
             )
 
     return annotations
 
 
-def download_species_annotations(species: str):
+def download_species_annotations(species: str, families: dict):
     for chromosome, length in chr_length.items():
         for i in tqdm(range(0, length, 100000)):
-            annotations = get_range_annotations(species, chromosome, i, i + 100000)
+            annotations = get_range_annotations(
+                species, chromosome, i, i + 100000, families
+            )
             save_annotations(species, chromosome, annotations)
 
 
@@ -82,6 +78,44 @@ def save_annotations(species: str, chromosome: str, annotations: list):
     with open(annotations_csv, "a+", newline="") as csv_file:
         csv_writer = csv.writer(csv_file, delimiter="\t", lineterminator="\n")
         csv_writer.writerows(annotations)
+
+
+def download_families(families_path: Union[str, pathlib.Path]):
+    """
+    https://www.dfam.org/releases/Dfam_3.6/apidocs/#operation--families-get
+    """
+    base_url = "https://dfam.org/api/families"
+    limit = 1000
+
+    start = 1
+    end = float("inf")
+
+    print("downloading Dfam families...")
+
+    families = {}
+    while start < end:
+        url = f"{base_url}?start={start}&limit={limit}"
+
+        response = requests.get(url)
+        response.raise_for_status()
+
+        response_json = response.json()
+
+        families_batch = response_json["results"]
+        for family in families_batch:
+            accession = family["accession"]
+            assert accession not in families, f"duplicate accession ID {accession}"
+            families[accession] = family
+
+        print(f"{len(families)}")
+
+        start += limit
+        end = response_json["total_count"]
+
+    print(f"{len(families)} total families downloaded")
+
+    with open(families_path, "w") as json_file:
+        json.dump(families, json_file)
 
 
 def main():
@@ -96,7 +130,15 @@ def main():
 
     args = parser.parse_args()
 
-    download_species_annotations(args.species)
+    families_filename = "families.json"
+    families_path = pathlib.Path(families_filename)
+    if not families_path.is_file():
+        download_families(families_path)
+
+    with open(families_path) as json_file:
+        families = json.load(json_file)
+
+    download_species_annotations(args.species, families)
 
 
 if __name__ == "__main__":
