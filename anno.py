@@ -2,7 +2,7 @@
 Author: yangtcai yangtcai@gmail.com
 Date: 2022-05-12 22:31:30
 LastEditors: yangtcai yangtcai@gmail.com
-LastEditTime: 2022-05-13 20:53:11
+LastEditTime: 2022-05-16 17:53:03
 FilePath: /undefined/Users/caiyz/Desktop/anno
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
@@ -10,6 +10,8 @@ Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查�
 import requests, json
 import csv 
 from tqdm import tqdm
+from chr_info import chr_length
+import argparse
 
 def get_subtype(accession_id: str):
     url = "https://dfam.org/api/families/" + accession_id
@@ -30,7 +32,7 @@ def get_annotation( sp, chr, op, ed):
     annotations = []
     for hit in results['hits']:
         if hit['type'] == 'LTR':
-            annotations.append([hit['ali_start'], hit['ali_end'], get_subtype(hit['accession'])])
+            annotations.append([chr, hit['ali_start'], hit['ali_end'], get_subtype(hit['accession'])])
 
     save_to_csv(annotations)
 
@@ -41,10 +43,18 @@ def save_to_csv(annotations):
 
 #get_annotation('hg38', 'chr3', 147733000, 147766820)
 
-def get_all():
-    for i in tqdm(range(0, 198295559, 100000)):
-        get_annotation('hg38', 'chr3', i, i+100000)
+def get_all(args):
+    for chr_name, chr_len in chr_length.items():
 
+        for i in tqdm(range(0, chr_len, 100000)):
+            get_annotation(args.species, chr_name, i, i+100000)
 
+if __name__ == "__main__":
+    # execute only if run as a script
 
-get_all()
+    parser = argparse.ArgumentParser(description='.')
+    parser.add_argument('--species', type=str, choices=['hg38', 'mm10'], required=True, 
+                        help='which species you interested in')
+
+    args = parser.parse_args()
+    get_all(args)
