@@ -1,5 +1,3 @@
-
-
 # standard library
 import argparse
 import csv
@@ -15,6 +13,7 @@ from tqdm import tqdm
 
 # project
 from chr_info import chr_length
+from generate_bedfile import chr_to_bed
 
 
 def get_range_annotations(
@@ -119,8 +118,15 @@ def main():
         required=True,
         help="species for which to download annotations",
     )
-
+    parser.add_argument(
+        "--sequence",
+        action="store_true",
+        help="species for which to download annotations",
+    )
     args = parser.parse_args()
+    if args.sequence:
+        chr_to_bed(args.species)
+        return
 
     families_filename = "families.json"
     families_path = pathlib.Path(families_filename)
