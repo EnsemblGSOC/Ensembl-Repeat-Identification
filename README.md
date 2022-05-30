@@ -1,6 +1,5 @@
-
-
 # Ensembl-Repeat-Identification
+
 
 ## Usage
 
@@ -11,13 +10,13 @@ pyenv install 3.9.12
 pyenv virtualenv 3.9.12 repeat_identification
 
 poetry install
-
 ```
 
-### Generate the target repeat sequence datasets.
+### Generate the target repeat sequence datasets
 
 ```shell
-python3 generate_datasets --species
+python generate_datasets.py --species
 
-e.g. python3 generate_datasets --hg38
+# e.g.
+python generate_datasets.py --species hg38
 ```
