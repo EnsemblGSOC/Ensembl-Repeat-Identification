@@ -7,7 +7,6 @@ from pathlib import Path
 
 # project
 from config import chr_length, url_species, species_integrity
-from requests_progress_bar import ProgressBar
 from utils import download_and_unzip, mkdir
 
 

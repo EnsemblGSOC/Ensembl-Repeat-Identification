@@ -7,19 +7,18 @@ FilePath: /Ensembl-Repeat-Identification/utils.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 """
 # standard library
-import csv
-import os
 import gzip
 import shutil
 import hashlib
+import os
+import pathlib
+
+from typing import Union
 
 # third party
 import requests
-from pathlib import Path
 
-# project
-from requests_progress_bar import ProgressBar
-from config import chr_length, url_species, species_integrity
+from tqdm import tqdm
 
 
 def mkdir(path):
@@ -28,30 +27,34 @@ def mkdir(path):
         os.mkdir(path)
 
 
-def download_file(url: str, file_name: str):
-    """only for first download users.
-
-    Keyword arguments:
-    url - the url of the genome or hits
-    file_name - the whole path of files
-    e.g. ./ref_datasets/hg38.gz
+def download_file(
+    source_url: str, save_path: Union[pathlib.Path, str], chunk_size: int = 10240
+):
     """
+    Download a file in chunks, show progress bar while downloading.
 
-    with requests.get(url, stream=True) as r:
-        chunk_size = 1024  # max of single time request
-        content_size = int(r.headers["content-length"])  # content sizel
-        progress = ProgressBar(
-            file_name,
-            total=content_size,
-            unit="KB",
-            chunk_size=chunk_size,
-            run_status="downloading",
-            fin_status="finish",
-        )  # add progress bar :DDD
-        with open(file_name, "wb") as f:
-            for data in r.iter_content(chunk_size=chunk_size):
-                f.write(data)
-                progress.refresh(count=len(data))
+    Args:
+        source_url: URL of the file to be downloaded
+        save_path: path to save the downloaded file
+        chunk_size: chunk size in bytes, defaults to 10 kibibytes
+    """
+    if not isinstance(save_path, pathlib.Path):
+        save_path = pathlib.Path(save_path)
+
+    response = requests.get(source_url, stream=True)
+    response.raise_for_status()
+
+    file_size = int(response.headers.get("content-length", 0))
+
+    with open(save_path, "wb+") as file, tqdm(
+        desc=save_path.stem,
+        total=file_size,
+        unit="iB",
+        unit_scale=True,
+    ) as progress_bar:
+        for stream_data in response.iter_content(chunk_size=chunk_size):
+            current_size = file.write(stream_data)
+            progress_bar.update(current_size)
 
 
 def download_and_unzip(
@@ -65,8 +68,8 @@ def download_and_unzip(
     filename - the name of unziped file, like hg38.fa
     checksum - the check file, to check size of gz file
     """
-    unziped_file = Path(f"{folder}/{filename}")
-    ziped_file = Path(f"{folder}/{filename}.gz")
+    unziped_file = pathlib.Path(f"{folder}/{filename}")
+    ziped_file = pathlib.Path(f"{folder}/{filename}.gz")
     if not unziped_file.exists():
         if not ziped_file.exists() or not check_integrity(
             ziped_file, checksum
