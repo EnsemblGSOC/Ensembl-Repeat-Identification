@@ -1,5 +1,6 @@
 # standard library
 import csv
+import pathlib
 
 # third party
 import pybedtools
@@ -19,7 +20,9 @@ def download_fasta_ref(species: str):
     directory = pathlib.Path("ref_datasets")
     directory.mkdir(exist_ok=True)
     checksum = species_integrity[species]
-    download_and_unzip(species, directory, f"{species}.fa", url_species[species], checksum)
+    download_and_unzip(
+        species, directory, f"{species}.fa", url_species[species], checksum
+    )
     chr_to_bed(species, f"{directory}/{species}.fa")
 
 
@@ -39,7 +42,7 @@ def chr_to_bed(species: str, fasta_filename):
             end = i + 100000
             if end > length:
                 end = length
-            pos.append("\t".join([str(chr), str(i), str(end)]))
+            pos.append("\t".join([chr, str(i), str(end)]))
         use_bedtools(species, chr, "\n".join(pos), fasta_filename)
 
 
@@ -104,7 +107,3 @@ def fasta_lines(chr_withlines: list, species: str, chr: str):
     with open(transfer_to_datasets, "w+", newline="") as ttd:
         csv_writer = csv.writer(ttd, delimiter="\t", lineterminator="\n")
         csv_writer.writerow(chr_withlines)
-
-
-if __name__ == "__main__":
-    download_fasta_ref("hg38")

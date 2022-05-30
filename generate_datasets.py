@@ -18,7 +18,7 @@ def main():
         type=str,
         choices=["hg38", "mm10"],
         required=True,
-        help="generate species datasets for deeplearning",
+        help="generate species datasets for deep learning",
     )
     args = parser.parse_args()
     generate_datasets(args.species)

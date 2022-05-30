@@ -1,12 +1,3 @@
-"""
-Author: yangtcai yangtcai@gmail.com
-Date: 2022-05-30 13:05:15
-LastEditors: yangtcai yangtcai@gmail.com
-LastEditTime: 2022-05-30 22:25:38
-FilePath: /Ensembl-Repeat-Identification/utils.py
-Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
-"""
-
 # standard library
 import gzip
 import hashlib
@@ -41,7 +32,7 @@ def download_file(
     file_size = int(response.headers.get("content-length", 0))
 
     with open(save_path, "wb+") as file, tqdm(
-        desc=save_path.stem,
+        desc=save_path.name,
         total=file_size,
         unit="iB",
         unit_scale=True,
@@ -52,7 +43,7 @@ def download_file(
 
 
 def download_and_unzip(
-    species: str, folder: str, filename: str, url: str, checksum: str
+    species: str, directory: str, filename: str, url: str, checksum: str
 ):
     """check if fasta exist, if not download fasta, and make a new file.
 
@@ -62,26 +53,30 @@ def download_and_unzip(
         filename - the name of unziped file, like hg38.fa
         checksum - the checksum of the file, to verify data integrity
     """
-    unziped_file = pathlib.Path(f"{folder}/{filename}")
-    ziped_file = pathlib.Path(f"{folder}/{filename}.gz")
-    if not unziped_file.exists():
-        if not ziped_file.exists() or not check_integrity(
-            ziped_file, checksum
-        ):  # check if exist the fasta.gz and the integrity of the fasta.gz
-            download_file(url, ziped_file)
-        un_gz(ziped_file, unziped_file)
+    if not isinstance(directory, pathlib.Path):
+        directory = pathlib.Path(directory)
+
+    file_path = directory / filename
+    compressed_file_path = directory / f"{filename}.gz"
+    if not file_path.is_file():
+        # check if the fasta.gz exists and verify its data integrity
+        if not compressed_file_path.is_file() or not check_integrity(
+            compressed_file_path, checksum
+        ):
+            download_file(url, compressed_file_path)
+        un_gz(compressed_file_path, file_path)
 
 
-def check_integrity(ziped_file: str, checksum: str) -> bool:
-    """check the integrity of already downloand reference fasta, if it not integrate, download again.
+def check_integrity(file_path: str, checksum: str) -> bool:
+    """Check the data integrity of a file, returns False if the file is corrupted
+    to download again.
 
     Args:
-        species - the name of reference genome
-            e.g. hg38
-        species_gz_ref - the name of fasta.gz
+        file_path - file path
+        checksum - MD5 hash of the file
     """
     print("Checking file integrity\U0001FAF6\U0001F913")
-    content_sum = hashlib.md5(open(ziped_file, "rb").read()).hexdigest()
+    content_sum = hashlib.md5(open(file_path, "rb").read()).hexdigest()
     # check the fasta.gz size
     res = checksum == content_sum
     if not res:

@@ -13,7 +13,7 @@ from config import chr_length, species_integrity, url_label_information
 from utils import download_and_unzip
 
 
-class Annotation_info(NamedTuple):
+class AnnotationInfo(NamedTuple):
     chromosome: str
     subtype: str
     start: int
@@ -96,17 +96,17 @@ def extract_lines(file_name: str, families):
     """
     print("Generate label datasets\U0001F43C\U0001F43E\U0001F43E")
     wanted = []
-    with open(file_name, "r") as r:
-        reader = csv.reader(r, delimiter="\t")
+    with open(file_name, "r") as file:
+        reader = csv.reader(file, delimiter="\t")
         for data in reader:
             accession = data[1]
-            if not str(data[2]).startswith("LTR"):
+            if not data[2].startswith("LTR"):
                 continue
             subtype = families[accession]["classification"]
             wanted.append(
-                Annotation_info(
+                AnnotationInfo(
                     chromosome=data[0],
-                    subtype=str(subtype),
+                    subtype=subtype,
                     start=data[9],
                     end=data[10],
                 )
@@ -114,11 +114,11 @@ def extract_lines(file_name: str, families):
     return wanted
 
 
-def save_annotations(folder: str, species: str, chromosome: str, annotations: list):
+def save_annotations(directory: str, species: str, chromosome: str, annotations: list):
     """make files to save the new datasets
 
     Args:
-        folder - the generated path of files.
+        directory - the generated path of files.
             e.g. ./ref_datasets
         species -  the name of reference genome.
             e.g. hg38
@@ -127,7 +127,7 @@ def save_annotations(folder: str, species: str, chromosome: str, annotations: li
         annotations -  the target region, with its own alignment star, end and type.
     """
 
-    annotations_csv = f"{folder}/{species}_{chromosome}.csv"
+    annotations_csv = f"{directory}/{species}_{chromosome}.csv"
     with open(annotations_csv, "a+", newline="") as csv_file:
         csv_writer = csv.writer(csv_file, delimiter="\t", lineterminator="\n")
         csv_writer.writerows(
