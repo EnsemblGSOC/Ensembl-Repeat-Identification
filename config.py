@@ -24,3 +24,16 @@ chr_length = {
     "chrX": 156040895,
     "chrY": 57227415,
 }
+url_species = {
+    "hg38": "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz",
+    "mm10": "http://hgdownload.soe.ucsc.edu/goldenPath/mm10/bigZips/chromFa.tar.gz",
+}
+
+species_integrity = {
+    "hg38": "1c9dcaddfa41027f17cd8f7a82c7293b",
+    "hg38.hits": "542414ef8e66df21569e0d67090a61f6",
+}
+
+url_label_information = {
+    "hg38": "https://www.dfam.org/releases/Dfam_3.6/annotations/hg38/hg38.nrph.hits.gz"
+}

@@ -8,6 +8,7 @@ authors = ["Yantong Cai - 蔡炎彤 <yangtcai@gmail.com>"]
 python = "^3.9"
 requests = "^2.27.1"
 tqdm = "^4.64.0"
+pybedtools = "^0.9.0"
 
 [tool.poetry.dev-dependencies]
 
