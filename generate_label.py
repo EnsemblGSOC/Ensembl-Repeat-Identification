@@ -68,9 +68,9 @@ def download_families(families_path: Union[str, pathlib.Path]):
 def download_annotation(species: str):
     """all the annotated datasets generated from there to start.
 
-    Keyword arguments:
-    species - the name of reference genome.
-    e.g. hg38
+    Args:
+        species - the name of reference genome.
+            e.g. hg38
     """
     folder = f"./annotation_label"
     mkdir(folder)
@@ -94,11 +94,12 @@ def download_annotation(species: str):
 
 def extract_lines(file_name: str, families):
     """match the information of web with the hits files
-    Keyword arguments:
-    file_name - whole path with species information.
-    e.g. ./ref_datasets/hg38.fa
-    families - the subtype of repeat sequence.
-    e.g. LTR
+
+    Args:
+        file_name - whole path with species information.
+            e.g. ./ref_datasets/hg38.fa
+        families - the subtype of repeat sequence.
+            e.g. LTR
     """
     print("Generate label datasets\U0001F43C\U0001F43E\U0001F43E")
     wanted = []
@@ -123,14 +124,14 @@ def extract_lines(file_name: str, families):
 def save_annotations(folder: str, species: str, chromosome: str, annotations: list):
     """make files to save the new datasets
 
-    Keyword arguments:
-    folder - the generated path of files.
-    e.g. ./ref_datasets
-    species -  the name of reference genome.
-    e.g. hg38
-    chromosome - the chromosome of the chosen species.
-    e.g. chr1
-    annotations -  the target region, with its own alignment star, end and type.
+    Args:
+        folder - the generated path of files.
+            e.g. ./ref_datasets
+        species -  the name of reference genome.
+            e.g. hg38
+        chromosome - the chromosome of the chosen species.
+            e.g. chr1
+        annotations -  the target region, with its own alignment star, end and type.
     """
 
     annotations_csv = f"{folder}/{species}_{chromosome}.csv"

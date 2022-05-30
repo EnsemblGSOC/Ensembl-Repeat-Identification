@@ -13,9 +13,9 @@ from utils import download_and_unzip, mkdir
 def download_fasta_ref(species: str):
     """all the fasta information generated from there to start.
 
-    Keyword arguments:
-    species - the name of reference genome.
-    e.g. hg38
+    Args:
+        species - the name of reference genome.
+            e.g. hg38
     """
     folder = "./ref_datasets/"
     mkdir(folder)
@@ -27,11 +27,11 @@ def download_fasta_ref(species: str):
 def chr_to_bed(species: str, fasta_filename):
     """generate the bed of chromosome to generate the fasta
 
-    Keyword arguments:
-    fasta_filename - whole path with species information.
-    e.g. ./ref_datasets/hg38.fa
-    species - the name of reference genome,
-    e.g. hg38
+    Args:
+        fasta_filename - whole path with species information.
+            e.g. ./ref_datasets/hg38.fa
+        species - the name of reference genome,
+            e.g. hg38
     """
     print("Genertating reference datasets\U0001F95D\U0001F353\U0001F364\U0001F95F")
     for chr, length in chr_length.items():
@@ -47,14 +47,14 @@ def chr_to_bed(species: str, fasta_filename):
 def use_bedtools(species: str, chr: str, chr_fasta: str, fasta_filename: str):
     """use pybedtools to generate the fasta sequence
 
-    Keyword arguments:
-    species - the name of reference genome,
-    e.g. hg38
-    chr_fasta - the real sequence position bed
-    chr - chromosome name
-    e.g. chr1
-    fasta_filename - whole path with species information.
-    e.g. ./ref_datasets/hg38.fa
+    Args:
+        species - the name of reference genome,
+            e.g. hg38
+        chr_fasta - the real sequence position bed
+        chr - chromosome name
+            e.g. chr1
+        fasta_filename - whole path with species information.
+            e.g. ./ref_datasets/hg38.fa
     """
 
     bedtools_information = pybedtools.BedTool(chr_fasta, from_string=True)
@@ -66,12 +66,12 @@ def use_bedtools(species: str, chr: str, chr_fasta: str, fasta_filename: str):
 def transfer_fasta(seq_bed: str, species: str, chr: str):
     """format the fasta file for next step
 
-    Keyword arguments:
-    seq_bed - the generation of use_bedtools()
-    chr - chromosome name
-    e.g. chr1
-    species - the name of reference genome,
-    e.g. hg38
+    Args:
+        seq_bed - the generation of use_bedtools()
+        chr - chromosome name
+            e.g. chr1
+        species - the name of reference genome,
+            e.g. hg38
     """
     chr_withlines = []
     l = []
@@ -92,12 +92,12 @@ def transfer_fasta(seq_bed: str, species: str, chr: str):
 def fasta_lines(chr_withlines: list, species: str, chr: str):
     """make files to save the new datasets
 
-    Keyword arguments:
-    species -  the name of reference genome.
-    e.g. hg38
-    chr - the chromosome of the chosen species.
-    e.g. chr1
-    chr_withlines -  the information from transfer_fasta().
+    Args:
+        species -  the name of reference genome.
+            e.g. hg38
+        chr - the chromosome of the chosen species.
+            e.g. chr1
+        chr_withlines -  the information from transfer_fasta().
     """
     folder = "./ref_datasets/datasets/"
     mkdir(folder)

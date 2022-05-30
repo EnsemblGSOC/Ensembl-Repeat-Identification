@@ -62,11 +62,11 @@ def download_and_unzip(
 ):
     """check if fasta exist, if not download fasta, and make a new file.
 
-    Keyword arguments:
-    species - the name of reference genome
-    e.g. hg38
-    filename - the name of unziped file, like hg38.fa
-    checksum - the check file, to check size of gz file
+    Args:
+        species - the name of reference genome
+            e.g. hg38
+        filename - the name of unziped file, like hg38.fa
+        checksum - the checksum of the file, to verify data integrity
     """
     unziped_file = pathlib.Path(f"{folder}/{filename}")
     ziped_file = pathlib.Path(f"{folder}/{filename}.gz")
@@ -81,10 +81,10 @@ def download_and_unzip(
 def check_integrity(ziped_file: str, checksum: str) -> bool:
     """check the integrity of already downloand reference fasta, if it not integrate, download again.
 
-    Keyword arguments:
-    species - the name of reference genome
-    e.g. hg38
-    species_gz_ref - the name of fasta.gz
+    Args:
+        species - the name of reference genome
+            e.g. hg38
+        species_gz_ref - the name of fasta.gz
     """
     print("Checking file integrity\U0001FAF6\U0001F913")
     content_sum = hashlib.md5(open(ziped_file, "rb").read()).hexdigest()
@@ -98,11 +98,11 @@ def check_integrity(ziped_file: str, checksum: str) -> bool:
 def un_gz(zipped: str, unzipped: str):
     """unzip the gz files.
 
-    Keyword arguments:
-    unzipped - the unzipped name of file
-    e.g. hg38.fa
-    zipped - the zipped name of file
-    e.g. hg38.gz.fa
+    Args:
+        unzipped - the unzipped name of file
+            e.g. hg38.fa
+        zipped - the zipped name of file
+            e.g. hg38.gz.fa
     """
     print("Unziping……\U0001F600\U0001F63C\U0001F9B2\U0001F349\U0001F34A")
     with gzip.open(zipped, "rb") as f_in:
