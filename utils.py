@@ -21,12 +21,6 @@ import requests
 from tqdm import tqdm
 
 
-def mkdir(path):
-    folder = os.path.exists(path)
-    if not folder:
-        os.mkdir(path)
-
-
 def download_file(
     source_url: str, save_path: Union[pathlib.Path, str], chunk_size: int = 10240
 ):

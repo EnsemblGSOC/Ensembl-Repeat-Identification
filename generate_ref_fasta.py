@@ -5,8 +5,8 @@ import csv
 import pybedtools
 
 # project
-from utils import download_and_unzip, mkdir
 from config import chr_length, species_integrity, url_species
+from utils import download_and_unzip
 
 
 def download_fasta_ref(species: str):
@@ -16,11 +16,11 @@ def download_fasta_ref(species: str):
         species - the name of reference genome.
             e.g. hg38
     """
-    folder = "./ref_datasets/"
-    mkdir(folder)
+    directory = pathlib.Path("ref_datasets")
+    directory.mkdir(exist_ok=True)
     checksum = species_integrity[species]
-    download_and_unzip(species, folder, f"{species}.fa", url_species[species], checksum)
-    chr_to_bed(species, f"{folder}/{species}.fa")
+    download_and_unzip(species, directory, f"{species}.fa", url_species[species], checksum)
+    chr_to_bed(species, f"{directory}/{species}.fa")
 
 
 def chr_to_bed(species: str, fasta_filename):
@@ -98,9 +98,9 @@ def fasta_lines(chr_withlines: list, species: str, chr: str):
             e.g. chr1
         chr_withlines -  the information from transfer_fasta().
     """
-    folder = "./ref_datasets/datasets/"
-    mkdir(folder)
-    transfer_to_datasets = f"{folder}/{species}_{chr}_ref.csv"
+    directory = pathlib.Path("ref_datasets/datasets")
+    directory.mkdir(exist_ok=True)
+    transfer_to_datasets = f"{directory}/{species}_{chr}_ref.csv"
     with open(transfer_to_datasets, "w+", newline="") as ttd:
         csv_writer = csv.writer(ttd, delimiter="\t", lineterminator="\n")
         csv_writer.writerow(chr_withlines)

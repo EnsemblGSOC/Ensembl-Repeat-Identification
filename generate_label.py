@@ -10,7 +10,7 @@ import requests
 
 # project
 from config import chr_length, species_integrity, url_label_information
-from utils import download_and_unzip, mkdir
+from utils import download_and_unzip
 
 
 class Annotation_info(NamedTuple):
@@ -65,11 +65,11 @@ def download_annotation(species: str):
         species - the name of reference genome.
             e.g. hg38
     """
-    folder = f"./annotation_label"
-    mkdir(folder)
+    directory = pathlib.Path("annotation_label")
+    directory.mkdir(exist_ok=True)
     checksum = species_integrity[f"{species}.hits"]
     download_and_unzip(
-        species, folder, f"{species}.hits", url_label_information[species], checksum
+        species, directory, f"{species}.hits", url_label_information[species], checksum
     )  # checksum make sure the gz file integrity.
     families_filename = "families.json"
     families_path = pathlib.Path(families_filename)
@@ -79,10 +79,10 @@ def download_annotation(species: str):
     with open(families_path) as json_file:
         families = json.load(json_file)
 
-    wanted = extract_lines(f"{folder}/{species}.hits", families)
+    wanted = extract_lines(f"{directory}/{species}.hits", families)
     for chromosome, length in chr_length.items():
         data = list(filter(lambda x: x.chromosome == chromosome, wanted))
-        save_annotations(folder, species, chromosome, data)
+        save_annotations(directory, species, chromosome, data)
 
 
 def extract_lines(file_name: str, families):
