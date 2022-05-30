@@ -1,4 +1,5 @@
 
+
 # Ensembl-Repeat-Identification
 
 ## Usage
@@ -13,26 +14,10 @@ poetry install
 
 ```
 
-### Download annotations with the following command
+### Generate the target repeat sequence datasets.
 
 ```shell
-python anno.py --species hg38
+python3 generate_datasets --species
+
+e.g. python3 generate_datasets --hg38
 ```
-
-
-### Extract fasta sequence information
-
-1. Install bedtools and download hg38.fa
-
-2. Generate bed files
-```shell
-python anno.py --species hg38 --sequence
-```
-3. Generate chromosome fasta
-
-```shell
-find . -name "*.bed" | xargs -I {} bedtools getfasta -fi hg38.fa -bed {} -fo {}.fa
-```
-4. Transfer fasta format into text file
-
-to do 

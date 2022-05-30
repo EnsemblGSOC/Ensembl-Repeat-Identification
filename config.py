@@ -1,11 +1,3 @@
-'''
-Author: yangtcai yangtcai@gmail.com
-Date: 2022-05-22 18:34:12
-LastEditors: yangtcai yangtcai@gmail.com
-LastEditTime: 2022-05-27 15:01:52
-FilePath: /Ensembl-Repeat-Identification/chr_info.py
-Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
-'''
 chr_length = {
     "chr1": 248956422,
     "chr10": 133797422,
@@ -33,6 +25,15 @@ chr_length = {
     "chrY": 57227415,
 }
 url_species = {
-    'hg38':'https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz',
-    'mm10':'http://hgdownload.soe.ucsc.edu/goldenPath/mm10/bigZips/chromFa.tar.gz'
+    "hg38": "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz",
+    "mm10": "http://hgdownload.soe.ucsc.edu/goldenPath/mm10/bigZips/chromFa.tar.gz",
+}
+
+species_integrity = {
+    "hg38": "1c9dcaddfa41027f17cd8f7a82c7293b",
+    "hg38.hits": "542414ef8e66df21569e0d67090a61f6",
+}
+
+url_label_information = {
+    "hg38": "https://www.dfam.org/releases/Dfam_3.6/annotations/hg38/hg38.nrph.hits.gz"
 }
