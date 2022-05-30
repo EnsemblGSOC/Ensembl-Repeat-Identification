@@ -102,7 +102,7 @@ def extract_lines(file_name: str, families):
             accession = data[1]
             if not str(data[2]).startswith("LTR"):
                 continue
-            subtype = (families[accession]["classification"],)
+            subtype = families[accession]["classification"]
             wanted.append(
                 Annotation_info(
                     chromosome=data[0],
