@@ -3,11 +3,10 @@ import csv
 
 # third party
 import pybedtools
-from pathlib import Path
 
 # project
-from config import chr_length, url_species, species_integrity
 from utils import download_and_unzip, mkdir
+from config import chr_length, species_integrity, url_species
 
 
 def download_fasta_ref(species: str):

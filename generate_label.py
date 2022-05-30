@@ -1,26 +1,19 @@
 # standard library
-import argparse
-import csv, json
-import os
-import gzip
-from re import U
-import shutil
-import hashlib
+import csv
+import json
+import pathlib
+
+from typing import NamedTuple, Union
 
 # third party
-import pathlib
 import requests
 
 # project
-from config import url_label_information, species_integrity
+from config import chr_length, species_integrity, url_label_information
 from utils import download_and_unzip, mkdir
-from typing import Union
-from config import chr_length, url_label_information
-
-import typing
 
 
-class Annotation_info(typing.NamedTuple):
+class Annotation_info(NamedTuple):
     chromosome: str
     subtype: str
     start: int
