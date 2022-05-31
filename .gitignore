@@ -25,3 +25,6 @@
 *.html
 *.csv
 *.json
+
+annotation_label/
+ref_datasets/

@@ -1,27 +1,19 @@
 # standard library
-import argparse
-import csv, json
-import os
-import gzip
-from re import U
-import shutil
-import hashlib
+import csv
+import json
+import pathlib
+
+from typing import NamedTuple, Union
 
 # third party
-import pathlib
 import requests
 
 # project
-from config import url_label_information, species_integrity
-from requests_progress_bar import ProgressBar
-from utils import download_and_unzip, mkdir
-from typing import Union
-from config import chr_length, url_label_information
-
-import typing
+from config import chr_length, species_integrity, url_label_information
+from utils import download_and_unzip
 
 
-class Annotation_info(typing.NamedTuple):
+class AnnotationInfo(NamedTuple):
     chromosome: str
     subtype: str
     start: int
@@ -69,15 +61,15 @@ def download_families(families_path: Union[str, pathlib.Path]):
 def download_annotation(species: str):
     """all the annotated datasets generated from there to start.
 
-    Keyword arguments:
-    species - the name of reference genome.
-    e.g. hg38
+    Args:
+        species - the name of reference genome.
+            e.g. hg38
     """
-    folder = f"./annotation_label"
-    mkdir(folder)
+    directory = pathlib.Path("annotation_label")
+    directory.mkdir(exist_ok=True)
     checksum = species_integrity[f"{species}.hits"]
     download_and_unzip(
-        species, folder, f"{species}.hits", url_label_information[species], checksum
+        species, directory, f"{species}.hits", url_label_information[species], checksum
     )  # checksum make sure the gz file integrity.
     families_filename = "families.json"
     families_path = pathlib.Path(families_filename)
@@ -87,33 +79,34 @@ def download_annotation(species: str):
     with open(families_path) as json_file:
         families = json.load(json_file)
 
-    wanted = extract_lines(f"{folder}/{species}.hits", families)
+    wanted = extract_lines(f"{directory}/{species}.hits", families)
     for chromosome, length in chr_length.items():
         data = list(filter(lambda x: x.chromosome == chromosome, wanted))
-        save_annotations(folder, species, chromosome, data)
+        save_annotations(directory, species, chromosome, data)
 
 
 def extract_lines(file_name: str, families):
     """match the information of web with the hits files
-    Keyword arguments:
-    file_name - whole path with species information.
-    e.g. ./ref_datasets/hg38.fa
-    families - the subtype of repeat sequence.
-    e.g. LTR
+
+    Args:
+        file_name - whole path with species information.
+            e.g. ./ref_datasets/hg38.fa
+        families - the subtype of repeat sequence.
+            e.g. LTR
     """
     print("Generate label datasets\U0001F43C\U0001F43E\U0001F43E")
     wanted = []
-    with open(file_name, "r") as r:
-        reader = csv.reader(r, delimiter="\t")
+    with open(file_name, "r") as file:
+        reader = csv.reader(file, delimiter="\t")
         for data in reader:
             accession = data[1]
-            if not str(data[2]).startswith("LTR"):
+            if not data[2].startswith("LTR"):
                 continue
-            subtype = (families[accession]["classification"],)
+            subtype = families[accession]["classification"]
             wanted.append(
-                Annotation_info(
+                AnnotationInfo(
                     chromosome=data[0],
-                    subtype=str(subtype),
+                    subtype=subtype,
                     start=data[9],
                     end=data[10],
                 )
@@ -121,20 +114,20 @@ def extract_lines(file_name: str, families):
     return wanted
 
 
-def save_annotations(folder: str, species: str, chromosome: str, annotations: list):
+def save_annotations(directory: str, species: str, chromosome: str, annotations: list):
     """make files to save the new datasets
 
-    Keyword arguments:
-    folder - the generated path of files.
-    e.g. ./ref_datasets
-    species -  the name of reference genome.
-    e.g. hg38
-    chromosome - the chromosome of the chosen species.
-    e.g. chr1
-    annotations -  the target region, with its own alignment star, end and type.
+    Args:
+        directory - the generated path of files.
+            e.g. ./ref_datasets
+        species -  the name of reference genome.
+            e.g. hg38
+        chromosome - the chromosome of the chosen species.
+            e.g. chr1
+        annotations -  the target region, with its own alignment star, end and type.
     """
 
-    annotations_csv = f"{folder}/{species}_{chromosome}.csv"
+    annotations_csv = f"{directory}/{species}_{chromosome}.csv"
     with open(annotations_csv, "a+", newline="") as csv_file:
         csv_writer = csv.writer(csv_file, delimiter="\t", lineterminator="\n")
         csv_writer.writerows(

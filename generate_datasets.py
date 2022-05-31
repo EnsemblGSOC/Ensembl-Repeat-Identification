@@ -2,8 +2,8 @@
 import argparse
 
 # project
-from generate_ref_fasta import download_fasta_ref
 from generate_label import download_annotation
+from generate_ref_fasta import download_fasta_ref
 
 
 def generate_datasets(species: str):
@@ -18,7 +18,7 @@ def main():
         type=str,
         choices=["hg38", "mm10"],
         required=True,
-        help="generate species datasets for deeplearning",
+        help="generate species datasets for deep learning",
     )
     args = parser.parse_args()
     generate_datasets(args.species)

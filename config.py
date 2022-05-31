@@ -24,6 +24,7 @@ chr_length = {
     "chrX": 156040895,
     "chrY": 57227415,
 }
+
 url_species = {
     "hg38": "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz",
     "mm10": "http://hgdownload.soe.ucsc.edu/goldenPath/mm10/bigZips/chromFa.tar.gz",
