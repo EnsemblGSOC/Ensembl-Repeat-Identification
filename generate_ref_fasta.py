@@ -39,7 +39,7 @@ def chr_to_bed(species: str, fasta_filename):
     for chr, length in chr_length.items():
         pos = []
         for i in range(1, length, 100000):
-            end = i + 100000
+            end = i + 100000 - 1
             if end > length:
                 end = length
             pos.append("\t".join([chr, str(i), str(end)]))

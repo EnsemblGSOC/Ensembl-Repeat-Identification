@@ -81,7 +81,7 @@ def download_annotation(species: str):
 
     wanted = extract_lines(f"{directory}/{species}.hits", families)
     for chromosome, length in chr_length.items():
-        data = list(filter(lambda x: x.chromosome == chromosome, wanted))
+        data = list(filter(lambda x: x.chromosome.split(":")[0] == chromosome, wanted))
         save_annotations(directory, species, chromosome, data)
 
 
@@ -96,6 +96,7 @@ def extract_lines(file_name: str, families):
     """
     print("Generate label datasets\U0001F43C\U0001F43E\U0001F43E")
     wanted = []
+    cnt = 0
     with open(file_name, "r") as file:
         reader = csv.reader(file, delimiter="\t")
         for data in reader:
@@ -103,15 +104,46 @@ def extract_lines(file_name: str, families):
             if not data[2].startswith("LTR"):
                 continue
             subtype = families[accession]["classification"]
+            ali_start, ali_end = int(data[9]), int(data[10])
+            seq_start, seq_end = get_corresponding_sequence_position(ali_start, ali_end)
+            # ｜----------｜-----------｜ chromosome segments position
+            #       ｜--------｜ repeat sequence position
+            # it will be ignore
+            if not (ali_start >= seq_start and ali_end <= seq_end):
+                cnt += 1
+                continue
+            name = f"{data[0]}:{seq_start+1}-{seq_end}"
             wanted.append(
                 AnnotationInfo(
-                    chromosome=data[0],
+                    chromosome=name,
                     subtype=subtype,
                     start=data[9],
                     end=data[10],
                 )
             )
+    print(
+        f"{cnt} repeat sequence have been deleted"
+    )  # count all boundary repeat sequence numbers
     return wanted
+
+
+def get_corresponding_sequence_position(ali_start: int, ali_end: int):
+    """add chromosome information match the fasta segment position
+
+    Args:
+        ali_start - start with chromosome position
+            e.g. chr1
+        species -  the name of reference genome.
+            e.g. hg38
+        chromosome - the chromosome of the chosen species.
+            e.g. chr1
+        annotations -  the target region, with its own alignment star, end and type.
+    """
+
+    interval = 100000
+    sequence_start = ali_start // interval * interval
+    sequence_end = sequence_start + interval
+    return (sequence_start, sequence_end)
 
 
 def save_annotations(directory: str, species: str, chromosome: str, annotations: list):
