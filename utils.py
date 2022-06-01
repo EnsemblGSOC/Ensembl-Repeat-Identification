@@ -12,6 +12,9 @@ import requests
 from tqdm import tqdm
 
 
+data_directory = pathlib.Path("data")
+
+
 def download_file(
     source_url: str, save_path: Union[pathlib.Path, str], chunk_size: int = 10240
 ):

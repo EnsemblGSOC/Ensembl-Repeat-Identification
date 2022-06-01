@@ -7,7 +7,7 @@ import pybedtools
 
 # project
 from config import chr_length, species_integrity, url_species
-from utils import download_and_unzip
+from utils import data_directory, download_and_unzip
 
 
 def retrieve_genome_assembly(species: str):
@@ -17,8 +17,9 @@ def retrieve_genome_assembly(species: str):
         species - the name of reference genome.
             e.g. hg38
     """
-    directory = pathlib.Path("ref_datasets")
+    directory = data_directory / "genome_assemblies"
     directory.mkdir(exist_ok=True)
+
     checksum = species_integrity[species]
     download_and_unzip(
         species, directory, f"{species}.fa", url_species[species], checksum
@@ -31,7 +32,7 @@ def chr_to_bed(species: str, fasta_filename):
 
     Args:
         fasta_filename - whole path with species information.
-            e.g. ./ref_datasets/hg38.fa
+            e.g. ./genome_assemblies/hg38.fa
         species - the name of reference genome,
             e.g. hg38
     """
@@ -56,7 +57,7 @@ def use_bedtools(species: str, chr: str, chr_fasta: str, fasta_filename: str):
         chr - chromosome name
             e.g. chr1
         fasta_filename - whole path with species information.
-            e.g. ./ref_datasets/hg38.fa
+            e.g. ./genome_assemblies/hg38.fa
     """
 
     bedtools_information = pybedtools.BedTool(chr_fasta, from_string=True)
@@ -101,8 +102,9 @@ def fasta_lines(chr_withlines: list, species: str, chr: str):
             e.g. chr1
         chr_withlines -  the information from transfer_fasta().
     """
-    directory = pathlib.Path("ref_datasets/datasets")
+    directory = data_directory / "genome_assemblies" / "datasets"
     directory.mkdir(exist_ok=True)
+
     transfer_to_datasets = f"{directory}/{species}_{chr}_ref.csv"
     with open(transfer_to_datasets, "w+", newline="") as ttd:
         csv_writer = csv.writer(ttd, delimiter="\t", lineterminator="\n")

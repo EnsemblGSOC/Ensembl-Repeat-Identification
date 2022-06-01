@@ -10,7 +10,7 @@ import requests
 
 # project
 from config import chr_length, species_integrity, url_label_information
-from utils import download_and_unzip
+from utils import data_directory, download_and_unzip
 
 
 class AnnotationInfo(NamedTuple):
@@ -65,14 +65,14 @@ def retrieve_annotation(species: str):
         species - the name of reference genome.
             e.g. hg38
     """
-    directory = pathlib.Path("annotation_label")
+    directory = data_directory / "annotations"
     directory.mkdir(exist_ok=True)
+
     checksum = species_integrity[f"{species}.hits"]
     download_and_unzip(
         species, directory, f"{species}.hits", url_label_information[species], checksum
     )  # checksum make sure the gz file integrity.
-    families_filename = "families.json"
-    families_path = pathlib.Path(families_filename)
+    families_path = data_directory / "families.json"
     if not families_path.is_file():
         download_families(families_path)
 
@@ -90,7 +90,7 @@ def extract_lines(file_name: str, families):
 
     Args:
         file_name - whole path with species information.
-            e.g. ./ref_datasets/hg38.fa
+            e.g. ./genome_assemblies/hg38.fa
         families - the subtype of repeat sequence.
             e.g. LTR
     """
@@ -151,7 +151,7 @@ def save_annotations(directory: str, species: str, chromosome: str, annotations:
 
     Args:
         directory - the generated path of files.
-            e.g. ./ref_datasets
+            e.g. ./genome_assemblies
         species -  the name of reference genome.
             e.g. hg38
         chromosome - the chromosome of the chosen species.
