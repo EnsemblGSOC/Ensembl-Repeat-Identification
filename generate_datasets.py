@@ -2,13 +2,13 @@
 import argparse
 
 # project
-from generate_label import download_annotation
-from generate_ref_fasta import download_fasta_ref
+from retrieve_annotation import retrieve_annotation
+from retrieve_genome_assembly import retrieve_genome_assembly
 
 
 def generate_datasets(species: str):
-    download_annotation(species)
-    download_fasta_ref(species)
+    retrieve_genome_assembly(species)
+    retrieve_annotation(species)
 
 
 def main():
@@ -20,7 +20,9 @@ def main():
         required=True,
         help="generate species datasets for deep learning",
     )
+
     args = parser.parse_args()
+
     generate_datasets(args.species)
 
 

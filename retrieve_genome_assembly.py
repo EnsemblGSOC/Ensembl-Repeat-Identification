@@ -10,7 +10,7 @@ from config import chr_length, species_integrity, url_species
 from utils import download_and_unzip
 
 
-def download_fasta_ref(species: str):
+def retrieve_genome_assembly(species: str):
     """all the fasta information generated from there to start.
 
     Args:

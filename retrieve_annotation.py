@@ -58,7 +58,7 @@ def download_families(families_path: Union[str, pathlib.Path]):
         json.dump(families, json_file)
 
 
-def download_annotation(species: str):
+def retrieve_annotation(species: str):
     """all the annotated datasets generated from there to start.
 
     Args:
