@@ -1,19 +1,31 @@
 # mark some pins.
 
+## scripts
 
-1. *generate_ref_fasta* -> choose human from ![Dfam](https://www.dfam.org/home)
-The date will look like the following
-```shell
+1. *retrieve_genome_assembly.py*
+
+Download a genome assembly, initially the human reference genome GRCh38 (called hg38 by Dfam), from the UCSC Genome Browser.
+
+Split the genome sequences to smaller files ?
+
+The data will look like the following:
+```
 sequence format: chr1: 1 - 100000, NNNNNN
 ```
 
-2. *generate_label.py* -> generate the target segments datasets
-```shell
+2. *retrieve_annotation.py*
+
+Download repeat annotations from [Dfam](https://www.dfam.org/home) and generate a subset of the annotations by selecting the desired repeat family or subtype. The selected annotations are saved as the repeat boundaries to create the sequence segmentation dataset.
+
+retrieve_annotation.py
+```
 label format: chr1 start end subtype
 ```
-3. *generate_datasets.py* -> one command to generate datasets
 
-4. *utils* -> some same useful command
+3. *generate_dataset.py*
 
+Dataset generation script with arguments for different dataset generation subtasks.
 
+4. *utils.py*
 
+Project library module.
