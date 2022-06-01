@@ -10,7 +10,7 @@ import requests
 
 # project
 from config import chr_length, species_integrity, url_label_information
-from utils import data_directory, download_and_unzip
+from utils import data_directory, download_and_extract
 
 
 class AnnotationInfo(NamedTuple):
@@ -21,11 +21,12 @@ class AnnotationInfo(NamedTuple):
 
 
 def download_repeat_families(repeat_families_path: Union[str, pathlib.Path]):
-    """
+    """Download all Dfam repeat families and save to a JSON file.
+
     https://www.dfam.org/releases/Dfam_3.6/apidocs/#operation--families-get
 
     Args:
-        repeat_families_path: repeats families JSON file path
+        repeat_families_path: repeat families JSON file path
     """
     base_url = "https://dfam.org/api/families"
     limit = 1000
@@ -33,7 +34,7 @@ def download_repeat_families(repeat_families_path: Union[str, pathlib.Path]):
     start = 1
     end = float("inf")
 
-    print("downloading Dfam families...")
+    print("downloading Dfam repeat families...")
 
     families = {}
     while start < end:
@@ -55,53 +56,58 @@ def download_repeat_families(repeat_families_path: Union[str, pathlib.Path]):
         start += limit
         end = response_json["total_count"]
 
-    print(f"{len(families)} total families downloaded")
+    print(f"{len(families)} total repeat families downloaded")
 
     with open(repeat_families_path, "w") as json_file:
         json.dump(families, json_file)
 
 
-def retrieve_annotation(species: str):
-    """all the annotated datasets generated from there to start.
+def retrieve_annotation(assembly: str):
+    """Download the assembly annotation and convert to appropriate format.
 
     Args:
-        species - the name of reference genome.
-            e.g. hg38
+        assembly: genome assembly name used by Dfam (e.g. hg38)
     """
-    directory = data_directory / "annotations"
-    directory.mkdir(exist_ok=True)
+    # set and create the annotations directory
+    annotations_directory = data_directory / "annotations"
+    annotations_directory.mkdir(exist_ok=True)
 
-    checksum = species_integrity[f"{species}.hits"]
-    download_and_unzip(
-        species, directory, f"{species}.hits", url_label_information[species], checksum
-    )  # checksum make sure the gz file integrity.
-
-    repeat_families_path = data_directory / "families.json"
+    # download Dfam repeat families
+    repeat_families_path = annotations_directory / "repeat_families.json"
     if not repeat_families_path.is_file():
         download_repeat_families(repeat_families_path)
 
+    # load repeat families
     with open(repeat_families_path) as json_file:
         repeat_families = json.load(json_file)
 
-    wanted = extract_lines(f"{directory}/{species}.hits", repeat_families)
+    # download and extract the original annotations file
+    checksum = species_integrity[f"{assembly}.hits"]
+    download_and_extract(
+        annotations_directory,
+        f"{assembly}.hits",
+        url_label_information[assembly],
+        checksum,
+    )
+
+    wanted = extract_lines(f"{annotations_directory}/{assembly}.hits", repeat_families)
     for chromosome, length in chr_length.items():
         data = list(filter(lambda x: x.chromosome.split(":")[0] == chromosome, wanted))
-        save_annotations(directory, species, chromosome, data)
+        save_annotations(annotations_directory, assembly, chromosome, data)
 
 
-def extract_lines(file_name: str, repeat_families):
+def extract_lines(assembly_fasta_path: str, repeat_families: dict):
     """match the information of web with the hits files
 
     Args:
-        file_name - whole path with species information.
-            e.g. ./genome_assemblies/hg38.fa
-        repeat_families - the subtype of repeat sequence.
-            e.g. LTR
+        assembly_fasta_path: genome assembly FASTA path
+            e.g. data/genome_assemblies/hg38.fa
+        repeat_families: repeat families dictionary
     """
-    print("Generate label datasets\U0001F43C\U0001F43E\U0001F43E")
+    print("Generating label datasets \U0001F43C\U0001F43E\U0001F43E")
     wanted = []
-    cnt = 0
-    with open(file_name, "r") as file:
+    num_skipped_repeats = 0
+    with open(assembly_fasta_path, "r") as file:
         reader = csv.reader(file, delimiter="\t")
         for data in reader:
             accession = data[1]
@@ -110,11 +116,11 @@ def extract_lines(file_name: str, repeat_families):
             subtype = repeat_families[accession]["classification"]
             ali_start, ali_end = int(data[9]), int(data[10])
             seq_start, seq_end = get_corresponding_sequence_position(ali_start, ali_end)
+            # repeated sequence will be skipped:
             # ｜----------｜-----------｜ chromosome segments position
-            #       ｜--------｜ repeat sequence position
-            # it will be ignore
+            #       ｜--------｜ repeated sequence position
             if not (ali_start >= seq_start and ali_end <= seq_end):
-                cnt += 1
+                num_skipped_repeats += 1
                 continue
             name = f"{data[0]}:{seq_start+1}-{seq_end}"
             wanted.append(
@@ -125,45 +131,39 @@ def extract_lines(file_name: str, repeat_families):
                     end=data[10],
                 )
             )
-    print(
-        f"{cnt} repeat sequence have been deleted"
-    )  # count all boundary repeat sequence numbers
+
+    # count all boundary repeat sequence numbers
+    print(f"{num_skipped_repeats} repeated sequences have been removed")
+
     return wanted
 
 
 def get_corresponding_sequence_position(ali_start: int, ali_end: int):
-    """add chromosome information match the fasta segment position
+    """add chromosome information matching the FASTA segment position
 
     Args:
-        ali_start - start with chromosome position
-            e.g. chr1
-        species -  the name of reference genome.
-            e.g. hg38
-        chromosome - the chromosome of the chosen species.
-            e.g. chr1
-        annotations -  the target region, with its own alignment star, end and type.
+        ali_start: start with chromosome position
+        ali_end: end with chromosome position
     """
-
     interval = 100000
     sequence_start = ali_start // interval * interval
     sequence_end = sequence_start + interval
     return (sequence_start, sequence_end)
 
 
-def save_annotations(directory: str, species: str, chromosome: str, annotations: list):
+def save_annotations(
+    assemblies_directory: str, assembly: str, chromosome: str, annotations: list
+):
     """make files to save the new datasets
 
     Args:
-        directory - the generated path of files.
-            e.g. ./genome_assemblies
-        species -  the name of reference genome.
-            e.g. hg38
-        chromosome - the chromosome of the chosen species.
-            e.g. chr1
-        annotations -  the target region, with its own alignment star, end and type.
+        assemblies_directory: assemblies directory path
+            e.g. data/genome_assemblies
+        assembly: genome assembly name used by Dfam (e.g. hg38)
+        chromosome: chromosome name (e.g. chr1)
+        annotations: the target region, with its own alignment star, end and type.
     """
-
-    annotations_csv = f"{directory}/{species}_{chromosome}.csv"
+    annotations_csv = f"{assemblies_directory}/{assembly}_{chromosome}.csv"
     with open(annotations_csv, "a+", newline="") as csv_file:
         csv_writer = csv.writer(csv_file, delimiter="\t", lineterminator="\n")
         csv_writer.writerows(

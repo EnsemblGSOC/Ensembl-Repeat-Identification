@@ -13,29 +13,30 @@ from tqdm import tqdm
 
 
 data_directory = pathlib.Path("data")
+data_directory.mkdir(exist_ok=True)
 
 
 def download_file(
-    source_url: str, save_path: Union[pathlib.Path, str], chunk_size: int = 10240
+    source_url: str, file_save_path: Union[pathlib.Path, str], chunk_size: int = 10240
 ):
     """
     Download a file in chunks, show progress bar while downloading.
 
     Args:
         source_url: URL of the file to be downloaded
-        save_path: path to save the downloaded file
+        file_save_path: path to save the downloaded file
         chunk_size: chunk size in bytes, defaults to 10 kibibytes
     """
-    if not isinstance(save_path, pathlib.Path):
-        save_path = pathlib.Path(save_path)
+    if not isinstance(file_save_path, pathlib.Path):
+        file_save_path = pathlib.Path(file_save_path)
 
     response = requests.get(source_url, stream=True)
     response.raise_for_status()
 
     file_size = int(response.headers.get("content-length", 0))
 
-    with open(save_path, "wb+") as file, tqdm(
-        desc=save_path.name,
+    with open(file_save_path, "wb+") as file, tqdm(
+        desc=file_save_path.name,
         total=file_size,
         unit="iB",
         unit_scale=True,
@@ -45,45 +46,46 @@ def download_file(
             progress_bar.update(current_size)
 
 
-def download_and_unzip(
-    species: str, directory: str, filename: str, url: str, checksum: str
+def download_and_extract(
+    target_directory: str, extracted_filename: str, source_url: str, checksum: str
 ):
-    """check if fasta exist, if not download fasta, and make a new file.
+    """Check if the file already exists, and if not, download, verify data integrity,
+    and extract.
 
     Args:
-        species - the name of reference genome
-            e.g. hg38
-        filename - the name of unziped file, like hg38.fa
-        checksum - the checksum of the file, to verify data integrity
+        target_directory: path to the directory to download and extract the file
+        extracted_filename: name of the extracted file
+        source_url: URL of the file to be downloaded
+        checksum: MD5 hash of the file
     """
-    if not isinstance(directory, pathlib.Path):
-        directory = pathlib.Path(directory)
+    if not isinstance(target_directory, pathlib.Path):
+        target_directory = pathlib.Path(target_directory)
 
-    file_path = directory / filename
-    compressed_file_path = directory / f"{filename}.gz"
-    if not file_path.is_file():
-        # check if the fasta.gz exists and verify its data integrity
-        if not compressed_file_path.is_file() or not check_integrity(
+    extracted_file_path = target_directory / extracted_filename
+    if not extracted_file_path.is_file():
+        compressed_file_path = target_directory / f"{extracted_filename}.gz"
+        # check if the compressed file exists and verify its data integrity
+        if not compressed_file_path.is_file() or not check_file_integrity(
             compressed_file_path, checksum
         ):
-            download_file(url, compressed_file_path)
-        un_gz(compressed_file_path, file_path)
+            download_file(source_url, compressed_file_path)
+        un_gz(compressed_file_path, extracted_file_path)
 
 
-def check_integrity(file_path: str, checksum: str) -> bool:
+def check_file_integrity(file_path: str, checksum: str) -> bool:
     """Check the data integrity of a file, returns False if the file is corrupted
     to download again.
 
     Args:
-        file_path - file path
-        checksum - MD5 hash of the file
+        file_path: file path
+        checksum: MD5 hash of the file
     """
-    print("Checking file integrity\U0001FAF6\U0001F913")
+    print("Checking file integrity \U0001FAF6\U0001F913")
     content_sum = hashlib.md5(open(file_path, "rb").read()).hexdigest()
     # check the fasta.gz size
     res = checksum == content_sum
     if not res:
-        print("Oops\U0001F928, the file have been attack by Iron Man")
+        print("Oops \U0001F928, the file have been attack by Iron Man")
     return res
 
 
@@ -96,7 +98,7 @@ def un_gz(zipped: str, unzipped: str):
         zipped - the zipped name of file
             e.g. hg38.gz.fa
     """
-    print("Unziping……\U0001F600\U0001F63C\U0001F9B2\U0001F349\U0001F34A")
+    print("Unziping... \U0001F600\U0001F63C\U0001F9B2\U0001F349\U0001F34A")
     with gzip.open(zipped, "rb") as f_in:
         with open(unzipped, "wb") as f_out:
             shutil.copyfileobj(f_in, f_out)
