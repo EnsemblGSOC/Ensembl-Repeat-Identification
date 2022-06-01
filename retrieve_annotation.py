@@ -20,9 +20,12 @@ class AnnotationInfo(NamedTuple):
     end: int
 
 
-def download_families(families_path: Union[str, pathlib.Path]):
+def download_repeat_families(repeat_families_path: Union[str, pathlib.Path]):
     """
     https://www.dfam.org/releases/Dfam_3.6/apidocs/#operation--families-get
+
+    Args:
+        repeat_families_path: repeats families JSON file path
     """
     base_url = "https://dfam.org/api/families"
     limit = 1000
@@ -54,7 +57,7 @@ def download_families(families_path: Union[str, pathlib.Path]):
 
     print(f"{len(families)} total families downloaded")
 
-    with open(families_path, "w") as json_file:
+    with open(repeat_families_path, "w") as json_file:
         json.dump(families, json_file)
 
 
@@ -72,26 +75,27 @@ def retrieve_annotation(species: str):
     download_and_unzip(
         species, directory, f"{species}.hits", url_label_information[species], checksum
     )  # checksum make sure the gz file integrity.
-    families_path = data_directory / "families.json"
-    if not families_path.is_file():
-        download_families(families_path)
 
-    with open(families_path) as json_file:
-        families = json.load(json_file)
+    repeat_families_path = data_directory / "families.json"
+    if not repeat_families_path.is_file():
+        download_repeat_families(repeat_families_path)
 
-    wanted = extract_lines(f"{directory}/{species}.hits", families)
+    with open(repeat_families_path) as json_file:
+        repeat_families = json.load(json_file)
+
+    wanted = extract_lines(f"{directory}/{species}.hits", repeat_families)
     for chromosome, length in chr_length.items():
         data = list(filter(lambda x: x.chromosome.split(":")[0] == chromosome, wanted))
         save_annotations(directory, species, chromosome, data)
 
 
-def extract_lines(file_name: str, families):
+def extract_lines(file_name: str, repeat_families):
     """match the information of web with the hits files
 
     Args:
         file_name - whole path with species information.
             e.g. ./genome_assemblies/hg38.fa
-        families - the subtype of repeat sequence.
+        repeat_families - the subtype of repeat sequence.
             e.g. LTR
     """
     print("Generate label datasets\U0001F43C\U0001F43E\U0001F43E")
@@ -103,7 +107,7 @@ def extract_lines(file_name: str, families):
             accession = data[1]
             if not data[2].startswith("LTR"):
                 continue
-            subtype = families[accession]["classification"]
+            subtype = repeat_families[accession]["classification"]
             ali_start, ali_end = int(data[9]), int(data[10])
             seq_start, seq_end = get_corresponding_sequence_position(ali_start, ali_end)
             # ｜----------｜-----------｜ chromosome segments position
