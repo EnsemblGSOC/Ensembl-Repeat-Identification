@@ -15,8 +15,8 @@ poetry install
 ### Generate the target repeat sequence datasets
 
 ```shell
-python generate_datasets.py --species
+python generate_dataset.py --species
 
 # e.g.
-python generate_datasets.py --species hg38
+python generate_dataset.py --species hg38
 ```
