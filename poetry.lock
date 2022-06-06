@@ -244,11 +244,7 @@ dev = ["black", "pytest"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-<<<<<<< HEAD
 content-hash = "734abce0ea9e528c7b5988e0121db300d188e801c4bc417d971b04912f7f2662"
-=======
-content-hash = "e9340fe591ba5df32308b56c51cbdaf6e6fa1ab6658dc4806f5e0c124afca4c3"
->>>>>>> 81cba509ab7d4ac18b7caf54612e1fd604dea9c1
 
 [metadata.files]
 biopython = [
