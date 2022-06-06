@@ -26,5 +26,6 @@
 *.csv
 *.json
 
+data
 annotation_label/
 ref_datasets/

@@ -9,7 +9,11 @@ python = "^3.9"
 requests = "^2.27.1"
 tqdm = "^4.64.0"
 pybedtools = "^0.9.0"
+<<<<<<< HEAD
 torch = "^1.11.0"
+=======
+biopython = "^1.79"
+>>>>>>> 81cba509ab7d4ac18b7caf54612e1fd604dea9c1
 
 [tool.poetry.dev-dependencies]
 pudb = "^2022.1.1"
