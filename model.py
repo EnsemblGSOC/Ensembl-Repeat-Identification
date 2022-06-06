@@ -41,7 +41,7 @@ class DETR(nn.Module):
             -- pred_boundaries: The normalized boundaries coordinates for all queries, represented as
                             (center, width). These values are normalized in [0, 1].
         """
-        pos = self.pe(sample.permute(1, 0, 2)).permute(1, 0, 2)
+        pos = self.pe(sample)
         hs = self.transformer(sample, self.query_embed.weight, pos)
         outputs_class = self.class_embed(hs)
         outputs_coord = self.segment_embed(hs).sigmoid()
