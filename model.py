@@ -3,6 +3,7 @@ from torch import nn, Tensor
 import torch
 import math
 import torch.nn.functional as F
+from transformer import Transformer
 
 
 class DETR(nn.Module):
@@ -40,7 +41,7 @@ class DETR(nn.Module):
             -- pred_boundaries: The normalized boundaries coordinates for all queries, represented as
                             (center, width). These values are normalized in [0, 1].
         """
-        pos = self.pe(sample)
+        pos = self.pe(sample.permute(1, 0, 2)).permute(1, 0, 2)
         hs = self.transformer(sample, self.query_embed.weight, pos)
         outputs_class = self.class_embed(hs)
         outputs_coord = self.segment_embed(hs).sigmoid()
@@ -74,8 +75,12 @@ class PositionalEncoding(nn.Module):
             torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model)
         )
         pe = torch.zeros(1, max_len, d_model)
+        len = d_model // 2
+
+        cos_pos = torch.cos(position * div_term)
+        cos_pos = cos_pos[:, :len]
         pe[0, :, 0::2] = torch.sin(position * div_term)
-        pe[0, :, 1::2] = torch.cos(position * div_term)
+        pe[0, :, 1::2] = cos_pos
         self.register_buffer("pe", pe)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -83,6 +88,18 @@ class PositionalEncoding(nn.Module):
         Args:
             x: Tensor, shape [batch_size, seq_len, embedding_dim]
         """
-        output = self.pe(x)
-        output = x.repeat(x.shape[0], 1, 1)
-        return output[:, : x.shape[1], :]
+        batch_size = x.shape[0]
+        seq_len = x.shape[1]
+        output = self.pe.repeat(batch_size, 1, 1)
+        return output[:, :seq_len, :]
+
+
+if __name__ == "__main__":
+    n, s, e = 10, 100, 5
+    num_queries = 100
+    transformer = Transformer(d_model=5, nhead=5)
+    model = DETR(transformer=transformer, num_classes=11, num_queries=num_queries)
+    x = torch.rand(n, s, e)
+    print(x.shape)
+    output = model(x)
+    print(output["pred_logits"].shape, output["pred_boundaries"].shape)
