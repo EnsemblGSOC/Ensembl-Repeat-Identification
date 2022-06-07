@@ -118,6 +118,17 @@ pysam = "*"
 six = "*"
 
 [[package]]
+name = "pyfaidx"
+version = "0.7.0"
+description = "pyfaidx: efficient pythonic random access to fasta subsequences"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+six = "*"
+
+[[package]]
 name = "pygments"
 version = "2.12.0"
 description = "Pygments is a syntax highlighting package written in Python."
@@ -244,7 +255,7 @@ dev = ["black", "pytest"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "359af54f49b0197eeab52ace17de1166043fdd56e70a19d3fc06f1d3e4a0a5dd"
+content-hash = "2064ad338a0a24821a2b684358a988f55edfbb21e8aa8513617d77b338cd2790"
 
 [metadata.files]
 biopython = [
@@ -332,6 +343,9 @@ pudb = [
 ]
 pybedtools = [
     {file = "pybedtools-0.9.0.tar.gz", hash = "sha256:9267c92cd764173449d9c31baedac0659b4eccc3d7c05e22ec378f86c0fc30a3"},
+]
+pyfaidx = [
+    {file = "pyfaidx-0.7.0.tar.gz", hash = "sha256:9ad5cc9381f0de9c43d4bdec0faf106b828cdfb6f8150ec71cab2ca7c8bee770"},
 ]
 pygments = [
     {file = "Pygments-2.12.0-py3-none-any.whl", hash = "sha256:dc9c10fb40944260f6ed4c688ece0cd2048414940f1cea51b8b226318411c519"},

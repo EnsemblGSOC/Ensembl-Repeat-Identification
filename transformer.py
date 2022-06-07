@@ -64,6 +64,7 @@ class Transformer(nn.Module):
 
         tgt = torch.zeros_like(query_embed)
         memory = self.encoder(src, pos=pos_embed)
+        # encoder
         hs = self.decoder(
             tgt,
             memory,

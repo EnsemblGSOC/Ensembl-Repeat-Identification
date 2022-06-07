@@ -91,8 +91,8 @@ def retrieve_annotation(assembly: str):
     )
 
     wanted = extract_lines(f"{annotations_directory}/{assembly}.hits", repeat_families)
-    for chromosome, length in chr_length.items():
-        data = list(filter(lambda x: x.chromosome.split(":")[0] == chromosome, wanted))
+    for chromosome, _ in chr_length.items():
+        data = list(filter(lambda x: x.chromosome == chromosome, wanted))
         save_annotations(annotations_directory, assembly, chromosome, data)
 
 
@@ -115,40 +115,16 @@ def extract_lines(assembly_fasta_path: str, repeat_families: dict):
                 continue
             subtype = repeat_families[accession]["classification"]
             ali_start, ali_end = int(data[9]), int(data[10])
-            seq_start, seq_end = get_corresponding_sequence_position(ali_start, ali_end)
-            # repeated sequence will be skipped:
-            # ｜----------｜-----------｜ chromosome segments position
-            #       ｜--------｜ repeated sequence position
-            if not (ali_start >= seq_start and ali_end <= seq_end):
-                num_skipped_repeats += 1
-                continue
-            name = f"{data[0]}:{seq_start+1}-{seq_end}"
             wanted.append(
                 AnnotationInfo(
-                    chromosome=name,
+                    chromosome=data[0],
                     subtype=subtype,
-                    start=data[9],
-                    end=data[10],
+                    start=ali_start,
+                    end=ali_end,
                 )
             )
 
-    # count all boundary repeat sequence numbers
-    print(f"{num_skipped_repeats} repeated sequences have been removed")
-
     return wanted
-
-
-def get_corresponding_sequence_position(ali_start: int, ali_end: int):
-    """add chromosome information matching the FASTA segment position
-
-    Args:
-        ali_start: start with chromosome position
-        ali_end: end with chromosome position
-    """
-    interval = 100000
-    sequence_start = ali_start // interval * interval
-    sequence_end = sequence_start + interval
-    return (sequence_start, sequence_end)
 
 
 def save_annotations(
@@ -167,8 +143,9 @@ def save_annotations(
     with open(annotations_csv, "a+", newline="") as csv_file:
         csv_writer = csv.writer(csv_file, delimiter="\t", lineterminator="\n")
         csv_writer.writerows(
-            [
-                (data.chromosome, data.start, data.end, data.subtype)
-                for data in annotations
-            ]
+            [(data.start, data.end, data.subtype) for data in annotations]
         )
+
+
+if __name__ == "__main__":
+    retrieve_annotation("hg38")
