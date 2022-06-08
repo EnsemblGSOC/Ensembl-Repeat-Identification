@@ -1,10 +1,12 @@
 from random import shuffle
+from torch import ge
 from torch.utils.data import DataLoader, Dataset
 from typing import Union
 import pathlib
 from os import listdir
 from os.path import isfile, join
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 from pyfaidx import Fasta
 from config import chr_length
@@ -13,61 +15,35 @@ from config import chr_length
 class RepeatSequenceDataset(Dataset):
     def __init__(
         self,
-        seq_folder: Union[str, pathlib.Path],
+        fasta_name: Union[str, pathlib.Path],
         label_folder: Union[str, pathlib.Path],
     ):
         super().__init__()
-        self.targets = self.read_FASTA_file(seq_folder, label_folder)
-
-    def read_FASTA_file(
-        self,
-        seq_filename: Union[str, pathlib.Path],
-        label_folder: Union[str, pathlib.Path],
-    ):
-        print("generate fasta sequence")
-        targets = []
-        genes = Fasta(seq_filename)
-        labels = self.read_labels(label_folder)
-        for chr, len in chr_length.items():
-            for i in tqdm(range(0, len, 1500)):
-                sample = genes[chr][i : i + 2000].seq
-                label = self.find_corresponding_label(i, i + 2000, labels[chr])
-                targets.append((sample, label))
-        return targets
-
-    def find_corresponding_label(self, seq_start: int, seq_end: int, labels):
-        results = []
-        for label in labels:
-            align_start, align_end = int(label[0]), int(label[1])
-            if align_start > align_end:
-                continue
-            if seq_start <= align_start and align_end <= seq_end:
-                results.append(label)
-        return np.stack(results) if len(results) > 0 else []
-
-    def read_label_file(self, label_filename: Union[str, pathlib.Path]):
-        return np.loadtxt(label_filename, delimiter="\t", dtype=str)
-
-    def read_labels(self, label_folder: Union[str, pathlib.Path]):
-        dic = dict()
-        for chr, len in chr_length.items():
-            dic[chr] = self.read_label_file(join(label_folder, f"hg38_{chr}.csv"))
-        return dic
+        self.genome = Fasta(fasta_name)
+        self.annotations = pd.read_csv(
+            label_folder, sep="\t", names=["start", "end", "subtype"]
+        )
+        self.len = len(self.genome)
 
     def __getitem__(self, index):
-        return self.targets[index]
+        genome_index = index * 1500
+        start = genome_index
+        end = genome_index + 2000
+        sample = self.genome[start:end].seq
+
+        target = self.annotations.apply(
+            lambda x: start <= x["start"] and x["end"] <= end, axis=1
+        )
+        return (sample, target)
 
     def __len__(self):
-        return len(self.targets)
-
-
-def onehot_encode():
-    pass
+        return self.len // 1500
 
 
 def build_dataloader():
     dataset = RepeatSequenceDataset(
-        seq_folder="./data/genome_assemblies/hg38.fa", label_folder="./data/annotations"
+        seq_folder="./data/genome_assemblies/datasets/chr1.fa",
+        label_folder="./data/annotations",
     )
     return DataLoader(dataset, batch_size=64, shuffle=True)
 
