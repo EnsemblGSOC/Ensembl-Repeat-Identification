@@ -42,7 +42,7 @@ class RepeatSequenceDataset(Dataset):
 
 def build_dataloader():
     dataset = RepeatSequenceDataset(
-        seq_folder="./data/genome_assemblies/datasets/chr1.fa",
+        fasta_name="./data/genome_assemblies/datasets/chr1.fa",
         label_folder="./data/annotations",
     )
     return DataLoader(dataset, batch_size=64, shuffle=True)

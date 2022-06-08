@@ -13,6 +13,7 @@ biopython = "^1.79"
 torch = "^1.11.0"
 pyfaidx = "^0.7.0"
 bio = "^1.3.9"
+pandas = "^1.4.2"
 
 [tool.poetry.dev-dependencies]
 pudb = "^2022.1.1"
