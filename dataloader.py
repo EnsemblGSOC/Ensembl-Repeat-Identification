@@ -13,7 +13,7 @@ from pyfaidx import Fasta
 from torch.utils.data import DataLoader, Dataset
 
 # project
-from config import classID
+from config import repeat_classes_IDs
 
 
 class RepeatSequenceDataset(Dataset):
@@ -45,7 +45,7 @@ class RepeatSequenceDataset(Dataset):
             axis=1,
         )
         target = self.annotations[target]
-        target["subtype"] = target["subtype"].apply(lambda ty: classID[ty])
+        target["subtype"] = target["subtype"].apply(lambda ty: repeat_classes_IDs[ty])
         temp_array = np.array(target["subtype"], np.int32)
         subtype = torch.tensor(temp_array, dtype=torch.int32)
         if self.transform:
