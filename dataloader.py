@@ -13,20 +13,20 @@ from pyfaidx import Fasta
 from torch.utils.data import DataLoader, Dataset
 
 # project
-from config import repeat_classes_IDs
+from config import repeat_class_IDs
 
 
 class RepeatSequenceDataset(Dataset):
     def __init__(
         self,
-        fasta_name: Union[str, pathlib.Path],
-        label_folder: Union[str, pathlib.Path],
+        fasta_path: Union[str, pathlib.Path],
+        annotations_path: Union[str, pathlib.Path],
         transform=None,
     ):
         super().__init__()
-        self.genome = Fasta(fasta_name)["chr1"]
+        self.genome = Fasta(fasta_path)["chr1"]
         self.annotations = pd.read_csv(
-            label_folder, sep="\t", names=["start", "end", "subtype"]
+            annotations_path, sep="\t", names=["start", "end", "subtype"]
         )
         self.len = len(self.genome)
         self.transform = transform
@@ -36,23 +36,23 @@ class RepeatSequenceDataset(Dataset):
         # produce sequence with overlap 1500 of length 2000
         start = genome_index
         end = genome_index + 2000
-        seq = self.genome[start:end].seq
+        sequence = self.genome[start:end].seq
 
-        sample = {"seq": seq, "ID": start}
+        sample = {"sequence": sequence, "start": start}
 
         target = self.annotations.apply(
             lambda x: start <= x["start"] and x["end"] <= end and x["start"] < x["end"],
             axis=1,
         )
         target = self.annotations[target]
-        target["subtype"] = target["subtype"].apply(lambda ty: repeat_classes_IDs[ty])
+        target["subtype"] = target["subtype"].apply(lambda ty: repeat_class_IDs[ty])
         temp_array = np.array(target["subtype"], np.int32)
-        subtype = torch.tensor(temp_array, dtype=torch.int32)
+        subtypes = torch.tensor(temp_array, dtype=torch.int32)
         if self.transform:
             # print(target[:, :2])
-            pos = target.iloc[:, [0, 1]]
-            sample, pos = self.transform((sample, pos))
-        target = {"class": subtype, "pos": pos}
+            coordinates = target.iloc[:, [0, 1]]
+            sample, coordinates = self.transform((sample, coordinates))
+        target = {"classes": subtypes, "coordinates": coordinates}
         return (sample, target)
 
     def __getitem__(self, index):
@@ -64,72 +64,80 @@ class RepeatSequenceDataset(Dataset):
 
 def build_dataset():
     dataset = RepeatSequenceDataset(
-        fasta_name="./data/genome_assemblies/datasets/chr1.fa",
-        label_folder="./data/annotations/hg38_chr1.csv",
+        fasta_path="./data/genome_assemblies/datasets/chr1.fa",
+        annotations_path="./data/annotations/hg38_chr1.csv",
         transform=transforms.Compose(
-            [TransFormat(), NormalizeLabels(), CenterLength()]
+            [
+                CoordinatesToTensor(),
+                NormalizeCoordinates(),
+                TranslateCoordinates(),
+            ]
         ),
     )
     return dataset
 
 
 def build_dataloader():
-    return DataLoader(
-        build_dataset(),
-        batch_size=64,
-        shuffle=True,
-    )
+    dataset = build_dataset()
+    return DataLoader(dataset, batch_size=64, shuffle=True)
 
 
-class TransFormat(object):
-    def __init__(
-        self,
-    ):
+class CoordinatesToTensor:
+    def __init__(self):
         pass
 
-    def __call__(self, data):
+    def __call__(self, item):
         # [n, 2]
-        sample, target_pd = data
-        temp_array = np.array(target_pd)
-        target = torch.tensor(temp_array, dtype=torch.float32)
-        return (sample, target)
+        sample, target_df = item
+        target_array = np.array(target_df)
+        target_tensor = torch.tensor(target_array, dtype=torch.float32)
+        return (sample, target_tensor)
 
 
-class NormalizeLabels(object):
-    """Normalize the datasets."""
+class NormalizeCoordinates:
+    """Normalize a sample's repeat annotation coordinates to a relative location
+    in the sequence, defined as start and end floats between 0 and 1."""
 
-    def __init__(
-        self,
-    ):
+    def __init__(self):
         pass
 
-    def __call__(self, data):
-        sample, target = data
-        length = len(sample["seq"])
-        start_pos = sample["ID"]
-        target[:, :] -= start_pos
-        target[:, :] /= length
-        return (sample, target)
+    def __call__(self, item):
+        sample, coordinates = item
+        length = len(sample["sequence"])
+        start_coordinate = sample["start"]
+        coordinates[:, :] -= start_coordinate
+        coordinates[:, :] /= length
+        return (sample, coordinates)
 
 
-class CenterLength(object):
-    """convert (left, right) to (center, length)"""
+class TranslateCoordinates:
+    """Convert (start, end) relative coordinates to (center, span)."""
 
-    def __init__(
-        self,
-    ):
+    def __init__(self):
         pass
 
-    def __call__(self, data):
+    def __call__(self, item):
         # [n, 2]
-        sample, target = data
+        sample, target = item
         center = (target[:, 1] + target[:, 0]) / 2  # [n]
-        length = (target[:, 1]) - target[:, 0]  # [n]
+        span = (target[:, 1]) - target[:, 0]  # [n]
 
-        return (sample, torch.stack((center, length), axis=1))
+        return (sample, torch.stack((center, span), axis=1))
 
 
 if __name__ == "__main__":
     dataset = build_dataset()
 
-    print(dataset[10100])
+    # index = 10100
+    # index = 0
+    # index = 165_970
+
+    import random
+
+    while True:
+        index = random.randint(1, 165_970)
+        item = dataset[index]
+        print(f"{index=}, {item=}")
+        annotation = item[1]
+        if annotation["classes"].nelement() > 0:
+            break
