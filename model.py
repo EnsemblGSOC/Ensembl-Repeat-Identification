@@ -1,8 +1,13 @@
-from random import sample
-from torch import nn, Tensor
-import torch
+# standard library
 import math
+
+# third party
+import torch
 import torch.nn.functional as F
+
+from torch import nn, Tensor
+
+# project
 from transformer import Transformer
 
 

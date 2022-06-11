@@ -1,12 +1,18 @@
-from torch.utils.data import DataLoader, Dataset
-import torchvision.transforms as transforms
-from typing import Union
+# standard library
 import pathlib
-import pandas as pd
-from pyfaidx import Fasta
-import torch
+
+from typing import Union
+
+# third party
 import numpy as np
-import csv
+import pandas as pd
+import torch
+import torchvision.transforms as transforms
+
+from pyfaidx import Fasta
+from torch.utils.data import DataLoader, Dataset
+
+# project
 from config import classID
 
 
