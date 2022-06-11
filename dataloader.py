@@ -126,14 +126,4 @@ class CenterLength(object):
 if __name__ == "__main__":
     dataset = build_dataset()
 
-    empty_target = 0
-    with open("num", "w+", newline="") as r:
-        writer = csv.writer(r, delimiter="\t", quotechar="|", quoting=csv.QUOTE_MINIMAL)
-
-        for i, elem in enumerate(dataset):
-            # print(elem[1].shape)
-            if elem[1].shape[0] == 0:
-                empty_target += 1
-            writer.writerow([i, empty_target, len(dataset)])
-
     print(dataset[10100])
