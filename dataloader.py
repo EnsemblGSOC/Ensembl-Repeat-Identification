@@ -40,19 +40,20 @@ class RepeatSequenceDataset(Dataset):
 
         sample = {"sequence": sequence, "start": start}
 
-        target = self.annotations.apply(
-            lambda x: start <= x["start"] and x["end"] <= end and x["start"] < x["end"],
-            axis=1,
-        )
-        target = self.annotations[target]
-        target["subtype"] = target["subtype"].apply(lambda ty: repeat_class_IDs[ty])
-        temp_array = np.array(target["subtype"], np.int32)
-        subtypes = torch.tensor(temp_array, dtype=torch.int32)
-        if self.transform:
-            # print(target[:, :2])
-            coordinates = target.iloc[:, [0, 1]]
-            sample, coordinates = self.transform((sample, coordinates))
-        target = {"classes": subtypes, "coordinates": coordinates}
+        anno_df = self.annotations
+        repeats_in_sequence = anno_df.loc[
+            (anno_df["start"] >= start)
+            & (anno_df["end"] <= end)
+            & (anno_df["start"] < anno_df["end"])
+        ]
+
+        repeat_ids_series = repeats_in_sequence["subtype"].map(repeat_class_IDs)
+        repeat_ids_array = np.array(repeat_ids_series, np.int32)
+        repeat_ids_tensor = torch.tensor(repeat_ids_array, dtype=torch.int32)
+
+        coordinates = repeats_in_sequence[["start", "end"]]
+        sample, coordinates = self.transform((sample, coordinates))
+        target = {"classes": repeat_ids_tensor, "coordinates": coordinates}
         return (sample, target)
 
     def __getitem__(self, index):
