@@ -1,4 +1,3 @@
-from random import shuffle
 from torch.utils.data import DataLoader, Dataset
 import torchvision.transforms as transforms
 from typing import Union
@@ -6,6 +5,9 @@ import pathlib
 import pandas as pd
 from pyfaidx import Fasta
 import torch
+import numpy as np
+import csv
+from config import classID
 
 
 class RepeatSequenceDataset(Dataset):
@@ -37,8 +39,14 @@ class RepeatSequenceDataset(Dataset):
             axis=1,
         )
         target = self.annotations[target]
+        target["subtype"] = target["subtype"].apply(lambda ty: classID[ty])
+        temp_array = np.array(target["subtype"], np.int32)
+        subtype = torch.tensor(temp_array, dtype=torch.int32)
         if self.transform:
-            sample, target = self.transform((sample, target))
+            # print(target[:, :2])
+            pos = target.iloc[:, [0, 1]]
+            sample, pos = self.transform((sample, pos))
+        target = {"class": subtype, "pos": pos}
         return (sample, target)
 
     def __getitem__(self, index):
@@ -52,7 +60,9 @@ def build_dataset():
     dataset = RepeatSequenceDataset(
         fasta_name="./data/genome_assemblies/datasets/chr1.fa",
         label_folder="./data/annotations/hg38_chr1.csv",
-        transform=transforms.Compose([Normalize_Labels(), CenterLength()]),
+        transform=transforms.Compose(
+            [TransFormat(), NormalizeLabels(), CenterLength()]
+        ),
     )
     return dataset
 
@@ -65,7 +75,21 @@ def build_dataloader():
     )
 
 
-class Normalize_Labels(object):
+class TransFormat(object):
+    def __init__(
+        self,
+    ):
+        pass
+
+    def __call__(self, data):
+        # [n, 2]
+        sample, target_pd = data
+        temp_array = np.array(target_pd)
+        target = torch.tensor(temp_array, dtype=torch.float32)
+        return (sample, target)
+
+
+class NormalizeLabels(object):
     """Normalize the datasets."""
 
     def __init__(
@@ -102,10 +126,14 @@ class CenterLength(object):
 if __name__ == "__main__":
     dataset = build_dataset()
 
-    # empty_target = 0
-    # for elem in dataset:
-    #     if elem[1].empty:
-    #         empty_target += 1
-    # print(empty_target, len(elem))
+    empty_target = 0
+    with open("num", "w+", newline="") as r:
+        writer = csv.writer(r, delimiter="\t", quotechar="|", quoting=csv.QUOTE_MINIMAL)
+
+        for i, elem in enumerate(dataset):
+            # print(elem[1].shape)
+            if elem[1].shape[0] == 0:
+                empty_target += 1
+            writer.writerow([i, empty_target, len(dataset)])
 
     print(dataset[10100])
