@@ -21,6 +21,8 @@ class RepeatSequenceDataset(Dataset):
         self,
         fasta_path: Union[str, pathlib.Path],
         annotations_path: Union[str, pathlib.Path],
+        segment_length: int = 2000,
+        overlap: int = 500,
         transform=None,
     ):
         super().__init__()
@@ -30,13 +32,15 @@ class RepeatSequenceDataset(Dataset):
         )
         self.len = len(self.genome)
         self.transform = transform
+        self.segment_length = segment_length
+        self.overlap = overlap
 
     def forward_strand(self, index):
-        genome_index = index * 1500
-        # produce sequence with overlap 1500 of length 2000
+        genome_index = index * (self.segment_length - self.overlap)
+        # produce sequence with overlap 500 of length 2000
         start = genome_index
-        end = genome_index + 2000
-        sequence = self.genome[start:end].seq
+        end = genome_index + self.segment_length
+        sequence = self.genome[start:end].seq.upper()
 
         sample = {"sequence": sequence, "start": start}
 
