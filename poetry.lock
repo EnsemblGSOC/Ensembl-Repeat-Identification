@@ -1,18 +1,4 @@
 [[package]]
-name = "bio"
-version = "1.3.9"
-description = "bio"
-category = "main"
-optional = false
-python-versions = ">=3.6"
-
-[package.dependencies]
-biopython = ">=1.79"
-mygene = "*"
-requests = "*"
-tqdm = "*"
-
-[[package]]
 name = "biopython"
 version = "1.79"
 description = "Freely available tools for computational molecular biology."
@@ -22,22 +8,6 @@ python-versions = ">=3.6"
 
 [package.dependencies]
 numpy = "*"
-
-[[package]]
-name = "biothings-client"
-version = "0.2.6"
-description = "Python Client for BioThings API services."
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-requests = ">=2.3.0"
-
-[package.extras]
-caching = ["requests-cache (>=0.4.13)"]
-dataframe = ["pandas (>=0.18.0)"]
-jsonld = ["PyLD (>=0.7.2)"]
 
 [[package]]
 name = "certifi"
@@ -88,17 +58,6 @@ parso = ">=0.8.0,<0.9.0"
 [package.extras]
 qa = ["flake8 (==3.8.3)", "mypy (==0.782)"]
 testing = ["Django (<3.1)", "colorama", "docopt", "pytest (<7.0.0)"]
-
-[[package]]
-name = "mygene"
-version = "3.2.2"
-description = "Python Client for MyGene.Info services."
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-biothings-client = ">=0.2.6"
 
 [[package]]
 name = "numpy"
@@ -366,12 +325,9 @@ dev = ["black", "pytest"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "2234c5734ca6492ae0206d33f995666faf8805b2b127565647aa7f560d521043"
+content-hash = "14985e3e7df0cf22ec8fe0aef8750a163b46ed8fd7b6baec3b8b8046b8e9be81"
 
 [metadata.files]
-bio = [
-    {file = "bio-1.3.9-py3-none-any.whl", hash = "sha256:dbcb40c53e00140d8b0139f7c58e5bf046cdf3258496b32fe8e07bd2bf2adf92"},
-]
 biopython = [
     {file = "biopython-1.79-cp310-cp310-win_amd64.whl", hash = "sha256:9eadfd4300f534cd4fa39613eeee786d2c3d6b981d373c5c46616fa1a97cad10"},
     {file = "biopython-1.79-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:72a1477cf1701964c7224e506a54fd65d1cc5228da200b634a17992230aa1cbd"},
@@ -400,10 +356,6 @@ biopython = [
     {file = "biopython-1.79-cp39-cp39-win_amd64.whl", hash = "sha256:b3ab26f26a1956ef26303386510d84e917e31fcbbc94918c336da0163ef628df"},
     {file = "biopython-1.79.tar.gz", hash = "sha256:edb07eac99d3b8abd7ba56ff4bedec9263f76dfc3c3f450e7d2e2bcdecf8559b"},
 ]
-biothings-client = [
-    {file = "biothings_client-0.2.6-py2.py3-none-any.whl", hash = "sha256:f88f3dfcc962d84b3555a426ae59cf4752761c17b8968ae60532109b9e8a232e"},
-    {file = "biothings_client-0.2.6.tar.gz", hash = "sha256:84d9d577b8fb3963a2fa71c5a13b10411566f3bc2e8ba67bb15de9d2ced08c2d"},
-]
 certifi = [
     {file = "certifi-2021.10.8-py2.py3-none-any.whl", hash = "sha256:d62a0163eb4c2344ac042ab2bdf75399a71a2d8c7d47eac2e2ee91b9d6339569"},
     {file = "certifi-2021.10.8.tar.gz", hash = "sha256:78884e7c1d4b00ce3cea67b44566851c4343c120abd683433ce934a68ea58872"},
@@ -423,10 +375,6 @@ idna = [
 jedi = [
     {file = "jedi-0.18.1-py2.py3-none-any.whl", hash = "sha256:637c9635fcf47945ceb91cd7f320234a7be540ded6f3e99a50cb6febdfd1ba8d"},
     {file = "jedi-0.18.1.tar.gz", hash = "sha256:74137626a64a99c8eb6ae5832d99b3bdd7d29a3850fe2aa80a4126b2a7d949ab"},
-]
-mygene = [
-    {file = "mygene-3.2.2-py2.py3-none-any.whl", hash = "sha256:18d85d1b28ecee2be31d844607fb0c5f7d7c58573278432df819ee2a5e88fe46"},
-    {file = "mygene-3.2.2.tar.gz", hash = "sha256:e729cabbc28cf5afb221bca1ab637883b375cb1a3e2f067587ec79f71affdaea"},
 ]
 numpy = [
     {file = "numpy-1.22.4-cp310-cp310-macosx_10_14_x86_64.whl", hash = "sha256:ba9ead61dfb5d971d77b6c131a9dbee62294a932bf6a356e48c75ae684e635b3"},
@@ -639,4 +587,3 @@ urwid = [
 urwid-readline = [
     {file = "urwid_readline-0.13.tar.gz", hash = "sha256:018020cbc864bb5ed87be17dc26b069eae2755cb29f3a9c569aac3bded1efaf4"},
 ]
-

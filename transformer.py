@@ -3,11 +3,17 @@ DETR Transformer class.
 
 Copy-paste from DETR implementation with modifications
 """
-import copy
-from typing import Optional, List
 
+
+# standard library
+import copy
+
+from typing import Optional
+
+# third party
 import torch
 import torch.nn.functional as F
+
 from torch import nn, Tensor
 
 
