@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import torch
 import torchvision.transforms as transforms
+import torch.nn.functional as F
 
 from pyfaidx import Fasta
 from torch.utils.data import DataLoader, Dataset
@@ -73,6 +74,7 @@ def build_dataset():
         annotations_path="./data/annotations/hg38_chr1.csv",
         transform=transforms.Compose(
             [
+                SampleMapEncode(DnaSequenceMapper()),
                 CoordinatesToTensor(),
                 NormalizeCoordinates(),
                 TranslateCoordinates(),
@@ -85,6 +87,17 @@ def build_dataset():
 def build_dataloader():
     dataset = build_dataset()
     return DataLoader(dataset, batch_size=64, shuffle=True)
+
+
+class SampleMapEncode:
+    def __init__(self, mapper):
+        self.mapper = mapper
+
+    def __call__(self, item):
+        # [n, 2]
+        sample, target_df = item
+        sample["sequence"] = self.mapper.sequence_to_one_hot(sample["sequence"])
+        return (sample, target_df)
 
 
 class CoordinatesToTensor:
@@ -128,6 +141,51 @@ class TranslateCoordinates:
         span = (target[:, 1]) - target[:, 0]  # [n]
 
         return (sample, torch.stack((center, span), axis=1))
+
+
+class DnaSequenceMapper:
+    """
+    DNA sequences translation to one-hot or label encoding.
+    """
+
+    def __init__(self):
+        nucleobase_symbols = ["A", "C", "G", "T", "N"]
+        padding_character = [" "]
+
+        self.nucleobase_letters = sorted(nucleobase_symbols + padding_character)
+
+        self.num_nucleobase_letters = len(self.nucleobase_letters)
+
+        self.nucleobase_letter_to_index = {
+            nucleobase_letter: index
+            for index, nucleobase_letter in enumerate(self.nucleobase_letters)
+        }
+
+        self.index_to_nucleobase_letter = {
+            index: nucleobase_letter
+            for index, nucleobase_letter in enumerate(self.nucleobase_letters)
+        }
+
+    def sequence_to_one_hot(self, sequence):
+        sequence_indexes = [
+            self.nucleobase_letter_to_index[nucleobase_letter]
+            for nucleobase_letter in sequence
+        ]
+        one_hot_sequence = F.one_hot(
+            torch.tensor(sequence_indexes), num_classes=self.num_nucleobase_letters
+        )
+        one_hot_sequence = one_hot_sequence.type(torch.float32)
+
+        return one_hot_sequence
+
+    def sequence_to_label_encoding(self, sequence):
+        label_encoded_sequence = [
+            self.nucleobase_letter_to_index[nucleobase] for nucleobase in sequence
+        ]
+
+        label_encoded_sequence = torch.tensor(label_encoded_sequence, dtype=torch.int32)
+
+        return label_encoded_sequence
 
 
 if __name__ == "__main__":
