@@ -47,10 +47,37 @@ class RepeatSequenceDataset(Dataset):
 
         anno_df = self.annotations
         repeats_in_sequence = anno_df.loc[
-            (anno_df["start"] >= start)
-            & (anno_df["end"] <= end)
-            & (anno_df["start"] < anno_df["end"])
+            (
+                (anno_df["start"] >= start)
+                & (anno_df["end"] <= end)
+                & (anno_df["start"] < anno_df["end"])
+            )
+            # ----------------------------
+            # ^seq_start                  ^seq_end
+            #             -----------------------
+            #             ^rep_start            ^rep_end
+            | (
+                (anno_df["start"] < end)
+                & (end < anno_df["end"])
+                & (anno_df["start"] < anno_df["end"])
+            )
+            #            ----------------------------
+            #            ^seq_start                  ^seq_end
+            # -----------------------
+            # ^rep_start            ^rep_end
+            | (
+                (anno_df["start"] < start)
+                & (start < anno_df["end"])
+                & (anno_df["start"] < anno_df["end"])
+            )
         ]
+        # truncate repeat pos
+        repeats_in_sequence = repeats_in_sequence.apply(
+            lambda x: [max(start, x["start"]), min(end, x["end"]), x["subtype"]],
+            axis=1,
+            result_type="broadcast",
+        )
+        # print(repeats_in_sequence)
 
         repeat_ids_series = repeats_in_sequence["subtype"].map(repeat_class_IDs)
         repeat_ids_array = np.array(repeat_ids_series, np.int32)
@@ -107,7 +134,7 @@ class CoordinatesToTensor:
     def __call__(self, item):
         # [n, 2]
         sample, target_df = item
-        target_array = np.array(target_df)
+        target_array = np.array(target_df, dtype=np.float32)
         target_tensor = torch.tensor(target_array, dtype=torch.float32)
         return (sample, target_tensor)
 

@@ -25,6 +25,7 @@ label format: chr1 start end subtype
 3. *generate_dataset.py*
 
 Dataset generation script with arguments for different dataset generation subtasks.
+We first choose 'LTR family' as training datasets, the length of 'LTR family' have variant length from 100bp to 5kb. So, when we training the datasets, if the result do not work well, this is one of the reason, we should consider.
 
 4. *utils.py*
 
