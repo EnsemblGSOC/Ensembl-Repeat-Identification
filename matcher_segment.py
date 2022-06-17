@@ -54,7 +54,7 @@ class HungarianMatcher(nn.Module):
         cost_segments = torch.cdist(out_segments, tgt_segments, p=1)
 
         # Compute the seg_iou cost betwen coordinates
-        cost_siou = -seqment_IOU(out_segments, tgt_segments)
+        cost_siou = -segment_IOU(out_segments, tgt_segments)
 
         # Final cost matrix
         C = (
@@ -81,7 +81,7 @@ def build_matcher():
     return HungarianMatcher()
 
 
-def seqment_IOU(segment1: Tensor, segment2: Tensor):
+def segment_IOU(segment1: Tensor, segment2: Tensor):
     """Compute IOU between two set of segments
 
     Params:

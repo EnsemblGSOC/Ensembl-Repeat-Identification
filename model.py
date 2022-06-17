@@ -9,6 +9,7 @@ from torch import nn, Tensor
 
 # project
 from transformer import Transformer
+from matcher_segment import build_matcher, segment_IOU
 
 
 class DETR(nn.Module):
@@ -161,7 +162,7 @@ class SetCriterion(nn.Module):
 
         losses = {}
         losses["loss_ssegments"] = loss_ssegments.sum() / num_boxes
-        IOU = seqment_IOU(src_boxes, target_boxes)
+        IOU = segment_IOU(src_boxes, target_boxes)
         loss_IOU = 1 - IOU
         losses["loss_IOU"] = loss_IOU.sum() / num_boxes
         return losses
