@@ -377,9 +377,13 @@ def _get_activation_fn(activation):
     raise RuntimeError(f"activation should be relu/gelu, not {activation}.")
 
 
+def build_transformer():
+    return Transformer(d_model=6, nhead=6)
+
+
 if __name__ == "__main__":
     n, s, e = 10, 100, 5
-    transformer = Transformer(d_model=5, nhead=5)
+
     x = torch.rand(n, s, e)
     query_embedd = torch.nn.Embedding(10, 5)
     pos = torch.rand(n, s, e)
