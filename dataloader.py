@@ -118,7 +118,9 @@ def build_dataset():
 
 def build_dataloader():
     dataset = build_dataset()
-    return DataLoader(dataset, batch_size=1, shuffle=True)
+    return DataLoader(
+        dataset, batch_size=2, shuffle=True, collate_fn=dataset.collate_fn
+    )
 
 
 class SampleMapEncode:
