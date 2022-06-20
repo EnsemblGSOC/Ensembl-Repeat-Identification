@@ -81,7 +81,7 @@ class RepeatSequenceDataset(Dataset):
 
         repeat_ids_series = repeats_in_sequence["subtype"].map(repeat_class_IDs)
         repeat_ids_array = np.array(repeat_ids_series, np.int32)
-        repeat_ids_tensor = torch.tensor(repeat_ids_array, dtype=torch.int32)
+        repeat_ids_tensor = torch.tensor(repeat_ids_array, dtype=torch.long)
 
         coordinates = repeats_in_sequence[["start", "end"]]
         sample, coordinates = self.transform((sample, coordinates))
@@ -93,6 +93,11 @@ class RepeatSequenceDataset(Dataset):
 
     def __len__(self):
         return self.len // 1500
+
+    def collate_fn(self, batch):
+        sequences = [data[0]["sequence"] for data in batch]
+        labels = [data[1] for data in batch]
+        return torch.stack(sequences), labels
 
 
 def build_dataset():
@@ -113,7 +118,7 @@ def build_dataset():
 
 def build_dataloader():
     dataset = build_dataset()
-    return DataLoader(dataset, batch_size=64, shuffle=True)
+    return DataLoader(dataset, batch_size=1, shuffle=True)
 
 
 class SampleMapEncode:
@@ -218,16 +223,20 @@ class DnaSequenceMapper:
 if __name__ == "__main__":
     dataset = build_dataset()
 
-    # index = 10100
-    # index = 0
-    # index = 165_970
+    index = 10100
+    index = 0
+    index = 165_970
 
     import random
 
-    while True:
-        index = random.randint(1, 165_970)
-        item = dataset[index]
-        print(f"{index=}, {item=}")
-        annotation = item[1]
-        if annotation["classes"].nelement() > 0:
-            break
+    # print(dataset[0])
+    # while True:
+    #     index = random.randint(1, 165_970)
+    #     item = dataset[index]
+    #     print(f"{index=}, {item=}")
+    #     annotation = item[1]
+    #     if annotation["classes"].nelement() > 0:
+    #         break
+    dataloader = build_dataloader()
+    for data in dataloader:
+        print(data)
