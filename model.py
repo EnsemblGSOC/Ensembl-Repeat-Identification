@@ -4,12 +4,11 @@ import math
 # third party
 import torch
 import torch.nn.functional as F
-
 from torch import nn, Tensor
 
 # project
-from transformer import Transformer
 from matcher_segment import build_matcher, segment_IOU
+from transformer import Transformer, build_transformer
 
 
 class DETR(nn.Module):
@@ -107,11 +106,12 @@ class SetCriterion(nn.Module):
         2) we supervise each pair of matched ground-truth / prediction (supervise class and boundaries)
     """
 
-    def __init__(self, num_classes, matcher, eos_coef, losses):
+    def __init__(self, num_classes, matcher, eos_coef, losses, weight_dict):
         """Create the criterion.
         Parameters:
             num_classes: number of object categories, omitting the special no-object category
             matcher: module able to compute a matching between targets and proposals
+            weight_dict: dict containing as key the names of the losses and as values their relative weight.
             eos_coef: relative classification weight applied to the no-object category
             losses: list of all the losses to be applied. See get_loss for list of available losses.
         """
@@ -119,6 +119,7 @@ class SetCriterion(nn.Module):
         self.num_classes = num_classes
         self.matcher = matcher
         self.eos_coef = eos_coef
+        self.weight_dict = weight_dict
         self.losses = losses
         empty_weight = torch.ones(self.num_classes + 1)
         empty_weight[-1] = self.eos_coef
@@ -237,19 +238,49 @@ def test_criterion():
     ]
     matcher = build_matcher()
     losses = ["classes", "coordinates"]
+    a_dict = {"loss_ce": 1, "loss_ssegments": 1, "loss_IOU": 1}
+
     matcher = build_matcher()
-    criterion = SetCriterion(num_classes, matcher=matcher, eos_coef=1, losses=losses)
+    criterion = SetCriterion(
+        num_classes, matcher=matcher, eos_coef=1, losses=losses, weight_dict=a_dict
+    )
     res = criterion(outputs, targets)
     print(res)
 
 
+def build_model():
+    num_classes = 5
+    num_queries = 10
+    # hardcode, can be warped later.
+
+    transformer = build_transformer()
+
+    model = DETR(
+        transformer,
+        num_classes=num_classes,
+        num_queries=num_queries,
+    )
+    matcher = build_matcher()
+    losses = ["classes", "coordinates"]
+    weight_dict = {"loss_ce": 1, "loss_ssegments": 1, "loss_IOU": 1}
+
+    criterion = SetCriterion(
+        num_classes,
+        matcher=matcher,
+        weight_dict=weight_dict,
+        eos_coef=1,
+        losses=losses,
+    )
+
+    return model, criterion
+
+
 if __name__ == "__main__":
-    # n, s, e = 10, 100, 5
-    # num_queries = 100
-    # transformer = Transformer(d_model=5, nhead=5)
-    # model = DETR(transformer=transformer, num_classes=11, num_queries=num_queries)
-    # x = torch.rand(n, s, e)
-    # print(x.shape)
-    # output = model(x)
-    # print(output["pred_logits"].shape, output["pred_boundaries"].shape)
-    test_criterion()
+    n, s, e = 1, 100, 5
+    num_queries = 100
+    transformer = Transformer(d_model=5, nhead=5)
+    model = DETR(transformer=transformer, num_classes=11, num_queries=num_queries)
+    x = torch.rand(n, s, e)
+    output = model(x)
+
+    # test_criterion()
