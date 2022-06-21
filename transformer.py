@@ -383,7 +383,7 @@ def build_transformer():
 
 if __name__ == "__main__":
     n, s, e = 10, 100, 5
-
+    transformer = Transformer(d_model=5, nhead=5)
     x = torch.rand(n, s, e)
     query_embedd = torch.nn.Embedding(10, 5)
     pos = torch.rand(n, s, e)
