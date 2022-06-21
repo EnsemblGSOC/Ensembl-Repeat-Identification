@@ -56,7 +56,7 @@ def argument():
     parser.add_argument("--lr", default=1e-4, type=float)
     parser.add_argument("--epochs", default=300, type=int)
     parser.add_argument("--batch_size", default=2, type=int)
-    parser.add_argument("--validation_split", default=0.2, type=int)
+    parser.add_argument("--validation_split", default=0.2, type=float)
     parser.add_argument("--seed", default=42, type=int)
     args = parser.parse_args()
     return args
