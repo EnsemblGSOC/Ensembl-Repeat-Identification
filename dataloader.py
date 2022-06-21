@@ -9,6 +9,7 @@ import pandas as pd
 import torch
 import torchvision.transforms as transforms
 import torch.nn.functional as F
+from torch.utils.data.sampler import SubsetRandomSampler
 
 from pyfaidx import Fasta
 from torch.utils.data import DataLoader, Dataset
@@ -81,7 +82,7 @@ class RepeatSequenceDataset(Dataset):
 
         repeat_ids_series = repeats_in_sequence["subtype"].map(repeat_class_IDs)
         repeat_ids_array = np.array(repeat_ids_series, np.int32)
-        repeat_ids_tensor = torch.tensor(repeat_ids_array, dtype=torch.int32)
+        repeat_ids_tensor = torch.tensor(repeat_ids_array, dtype=torch.long)
 
         coordinates = repeats_in_sequence[["start", "end"]]
         sample, coordinates = self.transform((sample, coordinates))
@@ -93,6 +94,11 @@ class RepeatSequenceDataset(Dataset):
 
     def __len__(self):
         return self.len // 1500
+
+    def collate_fn(self, batch):
+        sequences = [data[0]["sequence"] for data in batch]
+        labels = [data[1] for data in batch]
+        return torch.stack(sequences), labels
 
 
 def build_dataset():
@@ -111,9 +117,34 @@ def build_dataset():
     return dataset
 
 
-def build_dataloader():
+def build_dataloader(args):
+    validation_split = args.validation_split
     dataset = build_dataset()
-    return DataLoader(dataset, batch_size=64, shuffle=True)
+    dataset_size = len(dataset)
+    indices = list(range(dataset_size))
+    split = int(np.floor(validation_split * dataset_size))
+
+    np.random.seed(args.seed)
+    np.random.shuffle(indices)
+    train_indices, val_indices = indices[split:], indices[:split]
+    train_sampler = SubsetRandomSampler(train_indices)
+    valid_sampler = SubsetRandomSampler(val_indices)
+
+    train_loader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=args.batch_size,
+        sampler=train_sampler,
+        collate_fn=dataset.collate_fn,
+    )
+    validation_loader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=args.batch_size,
+        sampler=valid_sampler,
+        collate_fn=dataset.collate_fn,
+    )
+    return DataLoader(
+        dataset, batch_size=args.batch_size, shuffle=True, collate_fn=dataset.collate_fn
+    )
 
 
 class SampleMapEncode:
@@ -218,16 +249,20 @@ class DnaSequenceMapper:
 if __name__ == "__main__":
     dataset = build_dataset()
 
-    # index = 10100
-    # index = 0
-    # index = 165_970
+    index = 10100
+    index = 0
+    index = 165_970
 
     import random
 
-    while True:
-        index = random.randint(1, 165_970)
-        item = dataset[index]
-        print(f"{index=}, {item=}")
-        annotation = item[1]
-        if annotation["classes"].nelement() > 0:
-            break
+    # print(dataset[0])
+    # while True:
+    #     index = random.randint(1, 165_970)
+    #     item = dataset[index]
+    #     print(f"{index=}, {item=}")
+    #     annotation = item[1]
+    #     if annotation["classes"].nelement() > 0:
+    #         break
+    dataloader = build_dataloader()
+    for data in dataloader:
+        print(data)
