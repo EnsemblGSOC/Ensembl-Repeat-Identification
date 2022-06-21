@@ -9,6 +9,7 @@ import pandas as pd
 import torch
 import torchvision.transforms as transforms
 import torch.nn.functional as F
+from torch.utils.data.sampler import SubsetRandomSampler
 
 from pyfaidx import Fasta
 from torch.utils.data import DataLoader, Dataset
@@ -116,10 +117,33 @@ def build_dataset():
     return dataset
 
 
-def build_dataloader():
+def build_dataloader(args):
+    validation_split = args.validation_split
     dataset = build_dataset()
+    dataset_size = len(dataset)
+    indices = list(range(dataset_size))
+    split = int(np.floor(validation_split * dataset_size))
+
+    np.random.seed(args.seed)
+    np.random.shuffle(indices)
+    train_indices, val_indices = indices[split:], indices[:split]
+    train_sampler = SubsetRandomSampler(train_indices)
+    valid_sampler = SubsetRandomSampler(val_indices)
+
+    train_loader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=args.batch_size,
+        sampler=train_sampler,
+        collate_fn=dataset.collate_fn,
+    )
+    validation_loader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=args.batch_size,
+        sampler=valid_sampler,
+        collate_fn=dataset.collate_fn,
+    )
     return DataLoader(
-        dataset, batch_size=2, shuffle=True, collate_fn=dataset.collate_fn
+        dataset, batch_size=args.batch_size, shuffle=True, collate_fn=dataset.collate_fn
     )
 
 
