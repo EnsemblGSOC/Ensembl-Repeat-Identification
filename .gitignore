@@ -25,6 +25,7 @@
 *.html
 *.csv
 *.json
+*.ipynb
 
 data
 annotation_label/
