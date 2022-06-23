@@ -2,6 +2,7 @@
 import pathlib
 
 from typing import Union
+from tqdm import tqdm
 
 # third party
 import numpy as np
@@ -36,17 +37,9 @@ class RepeatSequenceDataset(Dataset):
         self.transform = transform
         self.segment_length = segment_length
         self.overlap = overlap
+        self.repeat_list = self.filter_no_repeat()
 
-    def forward_strand(self, index):
-        genome_index = index * (self.segment_length - self.overlap)
-        # produce sequence with overlap 500 of length 2000
-        start = genome_index
-        end = genome_index + self.segment_length
-        sequence = self.genome[start:end].seq.upper()
-
-        sample = {"sequence": sequence, "start": start}
-
-        anno_df = self.annotations
+    def get_the_corresbonding_repeat(self, anno_df, start, end):
         repeats_in_sequence = anno_df.loc[
             (
                 (anno_df["start"] >= start)
@@ -72,13 +65,38 @@ class RepeatSequenceDataset(Dataset):
                 & (anno_df["start"] < anno_df["end"])
             )
         ]
-        # truncate repeat pos
-        repeats_in_sequence = repeats_in_sequence.apply(
-            lambda x: [max(start, x["start"]), min(end, x["end"]), x["subtype"]],
-            axis=1,
-            result_type="broadcast",
-        )
+        return repeats_in_sequence
+
+    def filter_no_repeat(self):
+
+        repeat_list = []
+        for index in tqdm(range(self.len // (self.segment_length - self.overlap))):
+            genome_index = index * (self.segment_length - self.overlap)
+            # produce sequence with overlap 500 of length 2000
+            start = genome_index
+            end = genome_index + self.segment_length
+            anno_df = self.annotations
+            repeats_in_sequence = self.get_the_corresbonding_repeat(anno_df, start, end)
+            if not repeats_in_sequence.empty:
+                repeats_in_sequence = repeats_in_sequence.apply(
+                    lambda x: [
+                        max(start, x["start"]),
+                        min(end, x["end"]),
+                        x["subtype"],
+                    ],
+                    axis=1,
+                    result_type="broadcast",
+                )
+                repeat_list.append((index, repeats_in_sequence))
+        return repeat_list
         # print(repeats_in_sequence)
+
+    def forward_strand(self, index):
+        start, repeats_in_sequence = self.repeat_list[index]
+        end = start + self.segment_length
+        sequence = self.genome[start:end].seq.upper()
+
+        sample = {"sequence": sequence, "start": start}
 
         repeat_ids_series = repeats_in_sequence["subtype"].map(repeat_class_IDs)
         repeat_ids_array = np.array(repeat_ids_series, np.int32)
@@ -93,7 +111,7 @@ class RepeatSequenceDataset(Dataset):
         return self.forward_strand(index)
 
     def __len__(self):
-        return self.len // 1500
+        return len(self.repeat_list)
 
     def collate_fn(self, batch):
         sequences = [data[0]["sequence"] for data in batch]
@@ -142,9 +160,7 @@ def build_dataloader(args):
         sampler=valid_sampler,
         collate_fn=dataset.collate_fn,
     )
-    return DataLoader(
-        dataset, batch_size=args.batch_size, shuffle=True, collate_fn=dataset.collate_fn
-    )
+    return train_loader, validation_loader
 
 
 class SampleMapEncode:
@@ -255,14 +271,14 @@ if __name__ == "__main__":
 
     import random
 
-    # print(dataset[0])
-    # while True:
-    #     index = random.randint(1, 165_970)
-    #     item = dataset[index]
-    #     print(f"{index=}, {item=}")
-    #     annotation = item[1]
-    #     if annotation["classes"].nelement() > 0:
-    #         break
-    dataloader = build_dataloader()
-    for data in dataloader:
-        print(data)
+    print(dataset[0])
+    while True:
+        index = random.randint(1, 5000)
+        item = dataset[index]
+        print(f"{index=}, {item=}")
+        annotation = item[1]
+        if annotation["classes"].nelement() > 0:
+            break
+    # dataloader, _ = build_dataloader()
+    # for data in dataloader:
+    #     print(data)
