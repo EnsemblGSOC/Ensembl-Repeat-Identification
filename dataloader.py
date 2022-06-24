@@ -2,11 +2,12 @@
 import pathlib
 
 from typing import Union
-from tqdm import tqdm
+
 
 # third party
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 import torch
 import torchvision.transforms as transforms
 import torch.nn.functional as F
@@ -39,7 +40,7 @@ class RepeatSequenceDataset(Dataset):
         self.overlap = overlap
         self.repeat_list = self.filter_no_repeat()
 
-    def get_the_corresbonding_repeat(self, anno_df, start, end):
+    def get_the_corresponding_repeat(self, anno_df, start, end):
         repeats_in_sequence = anno_df.loc[
             (
                 (anno_df["start"] >= start)
@@ -72,11 +73,8 @@ class RepeatSequenceDataset(Dataset):
         repeat_list = []
         for index in tqdm(range(self.len // (self.segment_length - self.overlap))):
             genome_index = index * (self.segment_length - self.overlap)
-            # produce sequence with overlap 500 of length 2000
-            start = genome_index
-            end = genome_index + self.segment_length
             anno_df = self.annotations
-            repeats_in_sequence = self.get_the_corresbonding_repeat(anno_df, start, end)
+            repeats_in_sequence = self.get_the_corresponding_repeat(anno_df, start, end)
             if not repeats_in_sequence.empty:
                 repeats_in_sequence = repeats_in_sequence.apply(
                     lambda x: [
@@ -89,7 +87,6 @@ class RepeatSequenceDataset(Dataset):
                 )
                 repeat_list.append((index, repeats_in_sequence))
         return repeat_list
-        # print(repeats_in_sequence)
 
     def forward_strand(self, index):
         start, repeats_in_sequence = self.repeat_list[index]
@@ -264,21 +261,26 @@ class DnaSequenceMapper:
 
 if __name__ == "__main__":
     dataset = build_dataset()
+    print(len(dataset))
+    repeat_dict = dict()
+    for repeat in dataset:
+        key = repeat[1]["classes"].nelement()
+        repeat_dict[key] = repeat_dict.get(key, 0) + 1
+    print(repeat_dict)
+    # index = 10100
+    # index = 0
+    # index = 165_970
 
-    index = 10100
-    index = 0
-    index = 165_970
+    # import random
 
-    import random
-
-    print(dataset[0])
-    while True:
-        index = random.randint(1, 5000)
-        item = dataset[index]
-        print(f"{index=}, {item=}")
-        annotation = item[1]
-        if annotation["classes"].nelement() > 0:
-            break
-    # dataloader, _ = build_dataloader()
+    # print(dataset[0])
+    # while True:
+    #     index = random.randint(1, 5000)
+    #     item = dataset[index]
+    #     print(f"{index=}, {item=}")
+    #     annotation = item[1]
+    #     if annotation["classes"].nelement() > 0:
+    #         break
+    # # dataloader, _ = build_dataloader()
     # for data in dataloader:
     #     print(data)
