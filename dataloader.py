@@ -74,6 +74,8 @@ class RepeatSequenceDataset(Dataset):
         for index in tqdm(range(self.len // (self.segment_length - self.overlap))):
             genome_index = index * (self.segment_length - self.overlap)
             anno_df = self.annotations
+            start = genome_index
+            end = genome_index + self.segment_length
             repeats_in_sequence = self.get_the_corresponding_repeat(anno_df, start, end)
             if not repeats_in_sequence.empty:
                 repeats_in_sequence = repeats_in_sequence.apply(
@@ -85,7 +87,7 @@ class RepeatSequenceDataset(Dataset):
                     axis=1,
                     result_type="broadcast",
                 )
-                repeat_list.append((index, repeats_in_sequence))
+                repeat_list.append((start, repeats_in_sequence))
         return repeat_list
 
     def forward_strand(self, index):
