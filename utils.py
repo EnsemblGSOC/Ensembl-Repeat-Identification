@@ -7,6 +7,7 @@ import shutil
 from typing import Union
 
 # third party
+import pandas as pd
 import requests
 
 from tqdm import tqdm
@@ -14,6 +15,25 @@ from tqdm import tqdm
 
 data_directory = pathlib.Path("data")
 data_directory.mkdir(exist_ok=True)
+
+
+hits_column_dtypes = {
+    "seq_name": "string",
+    "family_acc": "string",
+    "family_name": "string",
+    "bits": "float",
+    "e-value": "float",
+    "bias": "float",
+    "hmm-st": "int",
+    "hmm-en": "int",
+    "strand": "string",
+    "ali-st": "int",
+    "ali-en": "int",
+    "env-st": "int",
+    "env-en": "int",
+    "sq-len": "int",
+    "kimura_div": "float",
+}
 
 
 def download_file(
@@ -102,3 +122,21 @@ def un_gz(zipped: str, unzipped: str):
     with gzip.open(zipped, "rb") as f_in:
         with open(unzipped, "wb") as f_out:
             shutil.copyfileobj(f_in, f_out)
+
+
+def hits_to_dataframe(hits_path: Union[pathlib.Path, str]) -> pd.DataFrame:
+    """Read an annotation *.hits file to a pandas DataFrame.
+
+    Args:
+        hits_path: *.hits file path
+    """
+    columns = hits_column_dtypes.keys()
+
+    hits = pd.read_csv(hits_path, sep="\t", names=columns)
+
+    # drop last row (contains the CSV header, i.e. column names)
+    hits.drop(hits.tail(1).index, inplace=True)
+
+    hits = hits.astype(hits_column_dtypes)
+
+    return hits
