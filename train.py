@@ -16,6 +16,7 @@ from torch.utils.tensorboard import SummaryWriter
 # project
 from dataloader import build_dataloader
 from model import build_model
+from mAP_validation import mean_average_precision
 
 
 def train_one_epoch(
@@ -31,6 +32,7 @@ def train_one_epoch(
     model.train()
     criterion.train()
     losssum = 0
+    mAPsum = 0
     sample_num = 0
     for samples, targets in data_loader:
         samples = samples.to(device)
@@ -43,12 +45,13 @@ def train_one_epoch(
             loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict
         )
         losssum += losses.item()
-
+        mAPsum += mean_average_precision(outputs, targets, num_classes=5)
         optimizer.zero_grad()
         losses.backward()
         if max_norm > 0:
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
         optimizer.step()
+    writer.add_scalar("mAP", mAPsum / sample_num, epoch)
     writer.add_scalar("Loss/train", losssum / sample_num, epoch)
 
 
@@ -117,6 +120,8 @@ def main():
             model, criterion, train_loader, optimizer, device, epoch, writer
         )
         test_one_epoch(model, criterion, validation_loader, device, epoch, writer)
+
+    mean_average_precision(outputs, targets)
 
 
 if __name__ == "__main__":
