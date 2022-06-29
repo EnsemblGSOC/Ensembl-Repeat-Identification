@@ -1,5 +1,10 @@
 """
 Submit a cluster LSF job to train a neural network.
+
+e.g.:
+    python submit_cluster_job.py --pipeline train.py --configuration configuration.yaml
+
+    python submit_cluster_job.py --gpu V100 --pipeline train.py --configuration configuration.yaml
 """
 
 
@@ -26,7 +31,7 @@ def main():
     argument_parser.add_argument(
         "--configuration", type=str, help="experiment configuration file path"
     )
-    parser.add_argument(
+    argument_parser.add_argument(
         "--gpu",
         default="A100",
         choices=["A100", "V100"],
@@ -52,7 +57,9 @@ def main():
             configuration = yaml.safe_load(file)
         configuration = AttributeDict(configuration)
 
-        experiment_name = f"{datetime}"
+        experiment_name = f"{configuration.experiment_prefix}_{datetime}"
+
+        experiments_directory = configuration.save_directory
 
         experiment_directory = pathlib.Path(
             f"{experiments_directory}/{experiment_name}"
@@ -64,7 +71,7 @@ def main():
 
         pipeline_command_elements = [
             f"python {pipeline_path}",
-            f"--configuration {configuration_copy}",
+            # f"--configuration {configuration_copy}",
         ]
 
     # no task specified
