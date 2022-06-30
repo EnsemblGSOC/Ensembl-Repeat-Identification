@@ -28,5 +28,4 @@
 *.ipynb
 
 data
-annotation_label/
-ref_datasets/
+experiments/
