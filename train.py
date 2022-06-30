@@ -11,7 +11,8 @@ import torch
 import random
 import argparse
 from torch.utils.tensorboard import SummaryWriter
-
+from pytorch_lightning.utilities import AttributeDict
+import yaml
 
 # project
 from dataloader import build_dataloader
@@ -27,6 +28,8 @@ def train_one_epoch(
     device: torch.device,
     epoch: int,
     writer,
+    num_classes,
+    iou_threshold,
     max_norm: float = 0,
 ):
     model.train()
@@ -45,7 +48,7 @@ def train_one_epoch(
             loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict
         )
         losssum += losses.item()
-        mAPsum += mean_average_precision(outputs, targets, num_classes=5)
+        mAPsum += mean_average_precision(outputs, targets, num_classes, iou_threshold)
         optimizer.zero_grad()
         losses.backward()
         if max_norm > 0:
@@ -87,41 +90,56 @@ def test_one_epoch(
 
 def argument():
     parser = argparse.ArgumentParser("Set transformer detector", add_help=False)
-    parser.add_argument("--lr", default=1e-4, type=float)
-    parser.add_argument("--epochs", default=300, type=int)
-    parser.add_argument("--batch_size", default=2, type=int)
-    parser.add_argument("--validation_split", default=0.2, type=float)
-    parser.add_argument("--seed", default=42, type=int)
+    parser.add_argument(
+        "--configuration", type=str, help="experiment configuration file path"
+    )
     args = parser.parse_args()
     return args
 
 
 def main():
     args = argument()
+    with open(args.configuration) as file:
+        configuration = yaml.safe_load(file)
+    configuration = AttributeDict(configuration)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(device)
     device = torch.device(device)
-    seed = args.seed
+    seed = configuration.seed
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
 
-    model, criterion = build_model()
+    model, criterion = build_model(configuration)
     model.to(device)
     criterion.to(device)
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=configuration.lr)
 
-    train_loader, validation_loader = build_dataloader(args)
+    train_loader, validation_loader = build_dataloader(configuration)
     writer = SummaryWriter()
-    for epoch in tqdm(range(args.epochs)):
+    for epoch in tqdm(range(configuration.epochs)):
         train_one_epoch(
-            model, criterion, train_loader, optimizer, device, epoch, writer
+            model,
+            criterion,
+            train_loader,
+            optimizer,
+            device,
+            epoch,
+            writer,
+            num_classes=configuration.num_classes,
+            iou_threshold=configuration.iou_threshold,
         )
-        test_one_epoch(model, criterion, validation_loader, device, epoch, writer)
-
-    mean_average_precision(outputs, targets)
+        test_one_epoch(
+            model,
+            criterion,
+            validation_loader,
+            device,
+            epoch,
+            configuration.iou_threshold,
+            writer,
+        )
 
 
 if __name__ == "__main__":

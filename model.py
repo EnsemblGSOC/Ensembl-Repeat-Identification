@@ -245,30 +245,34 @@ def test_criterion():
         num_classes, matcher=matcher, eos_coef=1, losses=losses, weight_dict=a_dict
     )
     res = criterion(outputs, targets)
-    print(res)
+    print(torch.argmax(outputs["pred_logits"], axis=2).shape)
 
 
-def build_model():
-    num_classes = 5
-    num_queries = 10
+def build_model(configuration):
+    num_classes = configuration.num_classes
+    num_queries = configuration.num_queries
     # hardcode, can be warped later.
 
-    transformer = build_transformer()
+    transformer = build_transformer(configuration)
 
     model = DETR(
         transformer,
         num_classes=num_classes,
         num_queries=num_queries,
     )
-    matcher = build_matcher()
+    matcher = build_matcher(configuration)
     losses = ["classes", "coordinates"]
-    weight_dict = {"loss_ce": 1, "loss_ssegments": 1, "loss_IOU": 1}
+    weight_dict = {
+        "loss_ce": configuration.cost_class,
+        "loss_ssegments": configuration.cost_segments,
+        "loss_IOU": configuration.cost_siou,
+    }
 
     criterion = SetCriterion(
         num_classes,
         matcher=matcher,
         weight_dict=weight_dict,
-        eos_coef=1,
+        eos_coef=configuration.eos_coef,
         losses=losses,
     )
 
@@ -276,11 +280,11 @@ def build_model():
 
 
 if __name__ == "__main__":
-    n, s, e = 1, 100, 5
-    num_queries = 100
-    transformer = Transformer(d_model=5, nhead=5)
-    model = DETR(transformer=transformer, num_classes=11, num_queries=num_queries)
-    x = torch.rand(n, s, e)
-    output = model(x)
-
-    # test_criterion()
+    # n, s, e = 1, 100, 5
+    # num_queries = 100
+    # transformer = Transformer(d_model=5, nhead=5)
+    # model = DETR(transformer=transformer, num_classes=11, num_queries=num_queries)
+    # x = torch.rand(n, s, e)
+    # output = model(x)
+    # print(output)
+    test_criterion()

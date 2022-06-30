@@ -46,6 +46,7 @@ def download_repeat_families(repeat_families_path: Union[str, pathlib.Path]):
         response_json = response.json()
 
         families_batch = response_json["results"]
+        print(families_batch)
         for family in families_batch:
             accession = family["accession"]
             assert accession not in families, f"duplicate accession ID {accession}"
@@ -83,6 +84,7 @@ def retrieve_annotation(assembly: str):
 
     # download and extract the original annotations file
     checksum = species_integrity[f"{assembly}.hits"]
+    print(checksum)
     download_and_extract(
         annotations_directory,
         f"{assembly}.hits",

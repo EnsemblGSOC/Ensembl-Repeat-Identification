@@ -377,8 +377,8 @@ def _get_activation_fn(activation):
     raise RuntimeError(f"activation should be relu/gelu, not {activation}.")
 
 
-def build_transformer():
-    return Transformer(d_model=6, nhead=6)
+def build_transformer(configuration):
+    return Transformer(d_model=6, nhead=6, dropout=configuration.dropout)
 
 
 if __name__ == "__main__":
