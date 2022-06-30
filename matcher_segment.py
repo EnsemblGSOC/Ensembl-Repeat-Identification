@@ -77,8 +77,10 @@ class HungarianMatcher(nn.Module):
         ]
 
 
-def build_matcher():
-    return HungarianMatcher()
+def build_matcher(configuration):
+    return HungarianMatcher(
+        configuration.cost_class, configuration.cost_segments, configuration.cost_siou
+    )
 
 
 def segment_IOU(segment1: Tensor, segment2: Tensor):
@@ -119,4 +121,6 @@ if __name__ == "__main__":
         for _ in range(batch_size)
     ]
     matcher = build_matcher()
-    print(matcher(outputs, targets))
+    # print(matcher(outputs, targets))
+    # print(outputs)
+    print(targets)
