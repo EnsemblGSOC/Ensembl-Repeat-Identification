@@ -1,7 +1,6 @@
 # standard library
 import pathlib
-
-from typing import Union
+from typing import Union, List
 
 
 # third party
@@ -16,6 +15,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from pyfaidx import Fasta
 from torch.utils.data import DataLoader, Dataset
 
+
 # project
 from config import repeat_class_IDs
 
@@ -25,20 +25,34 @@ class RepeatSequenceDataset(Dataset):
         self,
         fasta_path: Union[str, pathlib.Path],
         annotations_path: Union[str, pathlib.Path],
+        chrs: List[str],
         segment_length: int = 2000,
         overlap: int = 500,
         transform=None,
     ):
         super().__init__()
-        self.genome = Fasta(fasta_path)["chr1"]
-        self.annotations = pd.read_csv(
-            annotations_path, sep="\t", names=["start", "end", "subtype"]
-        )
-        self.len = len(self.genome)
+        self.chrs = chrs
+        self.path = [f"{fasta_path}/{chr}.fa" for chr in self.chrs]
+        self.annotation = [f"{annotations_path}/hg38_{chr}.csv" for chr in self.chrs]
+
         self.transform = transform
         self.segment_length = segment_length
         self.overlap = overlap
-        self.repeat_list = self.filter_no_repeat()
+        self.repeat_list = self.select_chr()
+
+    def select_chr(self):
+        repeat_list = []
+        for fasta_path, chr, annotation_path in zip(
+            self.path, self.chrs, self.annotation
+        ):
+
+            genome = Fasta(fasta_path)[chr]
+            annotations = pd.read_csv(
+                annotation_path, sep="\t", names=["start", "end", "subtype"]
+            )
+
+            repeat_list.extend(self.filter_no_repeat(genome, annotations))
+        return repeat_list
 
     def get_the_corresponding_repeat(self, anno_df, start, end):
         repeats_in_sequence = anno_df.loc[
@@ -68,12 +82,11 @@ class RepeatSequenceDataset(Dataset):
         ]
         return repeats_in_sequence
 
-    def filter_no_repeat(self):
-
+    def filter_no_repeat(self, genome, annotations):
         repeat_list = []
-        for index in tqdm(range(self.len // (self.segment_length - self.overlap))):
+        for index in tqdm(range(len(genome) // (self.segment_length - self.overlap))):
             genome_index = index * (self.segment_length - self.overlap)
-            anno_df = self.annotations
+            anno_df = annotations
             start = genome_index
             end = genome_index + self.segment_length
             repeats_in_sequence = self.get_the_corresponding_repeat(anno_df, start, end)
@@ -87,13 +100,14 @@ class RepeatSequenceDataset(Dataset):
                     axis=1,
                     result_type="broadcast",
                 )
-                repeat_list.append((start, repeats_in_sequence))
+                repeat_list.append(
+                    (genome[start:end].seq.upper(), start, repeats_in_sequence)
+                )
         return repeat_list
 
     def forward_strand(self, index):
-        start, repeats_in_sequence = self.repeat_list[index]
+        sequence, start, repeats_in_sequence = self.repeat_list[index]
         end = start + self.segment_length
-        sequence = self.genome[start:end].seq.upper()
 
         sample = {"sequence": sequence, "start": start}
 
@@ -119,9 +133,11 @@ class RepeatSequenceDataset(Dataset):
 
 
 def build_dataset():
+
     dataset = RepeatSequenceDataset(
-        fasta_path="./data/genome_assemblies/datasets/chr1.fa",
-        annotations_path="./data/annotations/hg38_chr1.csv",
+        fasta_path="./data/genome_assemblies/datasets",
+        annotations_path="./data/annotations",
+        chrs=["chr1", "chr2", "chrX"],
         transform=transforms.Compose(
             [
                 SampleMapEncode(DnaSequenceMapper()),
@@ -134,14 +150,14 @@ def build_dataset():
     return dataset
 
 
-def build_dataloader(args):
-    validation_split = args.validation_split
+def build_dataloader(configuration):
+    validation_split = configuration.validation_split
     dataset = build_dataset()
     dataset_size = len(dataset)
     indices = list(range(dataset_size))
     split = int(np.floor(validation_split * dataset_size))
 
-    np.random.seed(args.seed)
+    np.random.seed(configuration.seed)
     np.random.shuffle(indices)
     train_indices, val_indices = indices[split:], indices[:split]
     train_sampler = SubsetRandomSampler(train_indices)
@@ -149,13 +165,13 @@ def build_dataloader(args):
 
     train_loader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=args.batch_size,
+        batch_size=configuration.batch_size,
         sampler=train_sampler,
         collate_fn=dataset.collate_fn,
     )
     validation_loader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=args.batch_size,
+        batch_size=configuration.batch_size,
         sampler=valid_sampler,
         collate_fn=dataset.collate_fn,
     )
@@ -264,11 +280,11 @@ class DnaSequenceMapper:
 if __name__ == "__main__":
     dataset = build_dataset()
     print(len(dataset))
-    repeat_dict = dict()
-    for repeat in dataset:
-        key = repeat[1]["classes"].nelement()
-        repeat_dict[key] = repeat_dict.get(key, 0) + 1
-    print(repeat_dict)
+    # repeat_dict = dict()
+    # for repeat in dataset:
+    #     key = repeat[1]["classes"].nelement()
+    #     repeat_dict[key] = repeat_dict.get(key, 0) + 1
+    # print(repeat_dict)
     # index = 10100
     # index = 0
     # index = 165_970
