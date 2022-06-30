@@ -12,7 +12,7 @@ def segment_IOU(segment1, segment2):
     return (inter_r - inter_l) / (union_r - union_l)
 
 
-def mean_average_precision(outputs, targets, iou_threshold=0.5, num_classes=5):
+def mean_average_precision(outputs, targets, iou_threshold, num_classes):
     """
     Calculates mean average precision
     Parameters:
@@ -26,11 +26,10 @@ def mean_average_precision(outputs, targets, iou_threshold=0.5, num_classes=5):
 
     # list storing all AP for respective classes
     average_precisions = []
-
     # used for numerical stability later on
     epsilon = 1e-6
 
-    for c in range(num_classes):
+    for c in range(int(num_classes)):
 
         pred_classes, pred_boxes = (
             torch.argmax(outputs["pred_logits"], axis=2),
@@ -94,7 +93,10 @@ def mean_average_precision(outputs, targets, iou_threshold=0.5, num_classes=5):
         # torch.trapz for numerical integration
         average_precisions.append(torch.trapz(precisions, recalls))
 
-    return sum(average_precisions) / len(average_precisions)
+    if len(average_precisions) != 0:
+        return sum(average_precisions) / len(average_precisions)
+    else:
+        return 0
 
 
 if __name__ == "__main__":
