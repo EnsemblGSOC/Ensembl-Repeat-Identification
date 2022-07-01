@@ -1,23 +1,24 @@
 # standard library
 import pathlib
-from typing import Union, List
+import pickle
 
+from typing import List, Union
 
 # third party
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
 import torch
-import torchvision.transforms as transforms
 import torch.nn.functional as F
-from torch.utils.data.sampler import SubsetRandomSampler
+import torchvision.transforms as transforms
 
 from pyfaidx import Fasta
 from torch.utils.data import DataLoader, Dataset
-
+from torch.utils.data.sampler import SubsetRandomSampler
+from tqdm import tqdm
 
 # project
 from config import repeat_class_IDs
+from utils import data_directory
 
 
 class RepeatSequenceDataset(Dataset):
@@ -25,15 +26,18 @@ class RepeatSequenceDataset(Dataset):
         self,
         fasta_path: Union[str, pathlib.Path],
         annotations_path: Union[str, pathlib.Path],
-        chrs: List[str],
+        chromosomes: List[str],
         segment_length: int = 2000,
         overlap: int = 500,
         transform=None,
     ):
         super().__init__()
-        self.chrs = chrs
-        self.path = [f"{fasta_path}/{chr}.fa" for chr in self.chrs]
-        self.annotation = [f"{annotations_path}/hg38_{chr}.csv" for chr in self.chrs]
+        self.chromosomes = chromosomes
+        self.path = [f"{fasta_path}/{chromosome}.fa" for chromosome in self.chromosomes]
+        self.annotation = [
+            f"{annotations_path}/hg38_{chromosome}.csv"
+            for chromosome in self.chromosomes
+        ]
 
         self.transform = transform
         self.segment_length = segment_length
@@ -42,16 +46,33 @@ class RepeatSequenceDataset(Dataset):
 
     def select_chr(self):
         repeat_list = []
-        for fasta_path, chr, annotation_path in zip(
-            self.path, self.chrs, self.annotation
+        for fasta_path, chromosome, annotation_path in zip(
+            self.path, self.chromosomes, self.annotation
         ):
-
-            genome = Fasta(fasta_path)[chr]
-            annotations = pd.read_csv(
-                annotation_path, sep="\t", names=["start", "end", "subtype"]
+            annotation_path = pathlib.Path(annotation_path)
+            segments_repeats_pickle_path = (
+                data_directory / annotation_path.name.replace(".csv", ".pickle")
             )
 
-            repeat_list.extend(self.filter_no_repeat(genome, annotations))
+            # load the segments_with_repeats list from disk if it has already been generated
+            if segments_repeats_pickle_path.is_file():
+                with open(segments_repeats_pickle_path, "rb") as pickle_file:
+                    segments_with_repeats = pickle.load(pickle_file)
+            else:
+                genome = Fasta(fasta_path)[chromosome]
+                annotations = pd.read_csv(
+                    annotation_path, sep="\t", names=["start", "end", "subtype"]
+                )
+                segments_with_repeats = self.get_segments_with_repeats(
+                    genome, annotations
+                )
+
+                # save the segments_with_repeats list as a pickle file
+                with open(segments_repeats_pickle_path, "wb") as pickle_file:
+                    pickle.dump(segments_with_repeats, pickle_file)
+
+            repeat_list.extend(segments_with_repeats)
+
         return repeat_list
 
     def get_the_corresponding_repeat(self, anno_df, start, end):
@@ -82,7 +103,7 @@ class RepeatSequenceDataset(Dataset):
         ]
         return repeats_in_sequence
 
-    def filter_no_repeat(self, genome, annotations):
+    def get_segments_with_repeats(self, genome, annotations):
         repeat_list = []
         for index in tqdm(range(len(genome) // (self.segment_length - self.overlap))):
             genome_index = index * (self.segment_length - self.overlap)
@@ -132,12 +153,12 @@ class RepeatSequenceDataset(Dataset):
         return torch.stack(sequences), labels
 
 
-def build_dataset():
-
+def build_dataloader(configuration):
+    validation_split = configuration.validation_split
     dataset = RepeatSequenceDataset(
         fasta_path="./data/genome_assemblies/datasets",
         annotations_path="./data/annotations",
-        chrs=["chr1", "chr2", "chrX"],
+        chromosomes=configuration.chromosomes,
         transform=transforms.Compose(
             [
                 SampleMapEncode(DnaSequenceMapper()),
@@ -147,12 +168,7 @@ def build_dataset():
             ]
         ),
     )
-    return dataset
 
-
-def build_dataloader(configuration):
-    validation_split = configuration.validation_split
-    dataset = build_dataset()
     dataset_size = len(dataset)
     indices = list(range(dataset_size))
     split = int(np.floor(validation_split * dataset_size))
@@ -278,7 +294,20 @@ class DnaSequenceMapper:
 
 
 if __name__ == "__main__":
-    dataset = build_dataset()
+    dataset = RepeatSequenceDataset(
+        fasta_path="./data/genome_assemblies/datasets",
+        annotations_path="./data/annotations",
+        chrs=["chr1", "chr2", "chrX"],
+        transform=transforms.Compose(
+            [
+                SampleMapEncode(DnaSequenceMapper()),
+                CoordinatesToTensor(),
+                NormalizeCoordinates(),
+                TranslateCoordinates(),
+            ]
+        ),
+    )
+
     print(len(dataset))
     # repeat_dict = dict()
     # for repeat in dataset:
