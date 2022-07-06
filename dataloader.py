@@ -201,7 +201,7 @@ class SampleMapEncode:
     def __call__(self, item):
         # [n, 2]
         sample, target_df = item
-        sample["sequence"] = self.mapper.sequence_to_one_hot(sample["sequence"])
+        sample["sequence"] = self.mapper.sequence_to_label_encoding(sample["sequence"])
         return (sample, target_df)
 
 

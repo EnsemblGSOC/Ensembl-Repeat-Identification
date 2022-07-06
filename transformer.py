@@ -378,7 +378,7 @@ def _get_activation_fn(activation):
 
 
 def build_transformer(configuration):
-    return Transformer(d_model=6, nhead=6, dropout=configuration.dropout)
+    return Transformer(d_model=32, nhead=8, dropout=configuration.dropout)
 
 
 if __name__ == "__main__":

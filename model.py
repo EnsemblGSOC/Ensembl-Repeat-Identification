@@ -30,6 +30,8 @@ class DETR(nn.Module):
         self.num_queries = num_queries
         self.transformer = transformer
         hidden_dim = transformer.d_model
+        self.emb = nn.Embedding(6014, 32)
+
         self.class_embed = nn.Linear(hidden_dim, num_classes + 1)
         self.segment_embed = MLP(hidden_dim, hidden_dim, 2, 3)
         self.query_embed = nn.Embedding(num_queries, hidden_dim)
@@ -46,6 +48,7 @@ class DETR(nn.Module):
             -- pred_boundaries: The normalized boundaries coordinates for all queries, represented as
                             (center, width). These values are normalized in [0, 1].
         """
+        sample = self.emb(sample)
         pos = self.pe(sample)
         hs = self.transformer(sample, self.query_embed.weight, pos)
         outputs_class = self.class_embed(hs)
