@@ -255,7 +255,7 @@ class DnaSequenceMapper:
 
     def __init__(self):
         nucleobase_symbols = ["A", "C", "G", "T", "N"]
-        padding_character = [" "]
+        padding_character = [""]
 
         self.nucleobase_letters = sorted(nucleobase_symbols + padding_character)
 
