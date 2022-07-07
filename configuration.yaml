@@ -15,7 +15,7 @@ segment_length: 2000
 overlap: 500
 num_classes: 5 
 num_queries: 10
-num_nucleobase_letters: 5      
+num_nucleobase_letters: 6      
 ################################################################################
 
 # features
