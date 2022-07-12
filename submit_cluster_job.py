@@ -71,7 +71,7 @@ def main():
 
         pipeline_command_elements = [
             f"python {pipeline_path}",
-            # f"--configuration {configuration_copy}",
+            f"--configuration {configuration_copy}",
         ]
 
     # no task specified

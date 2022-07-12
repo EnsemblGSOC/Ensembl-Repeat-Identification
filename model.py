@@ -8,7 +8,7 @@ from torch import nn, Tensor
 
 # project
 from matcher_segment import build_matcher, segment_IOU
-from transformer import Transformer, build_transformer
+from transformer import Transformer
 
 
 class DETR(nn.Module):
@@ -255,8 +255,11 @@ def build_model(configuration):
     num_queries = configuration.num_queries
     # hardcode, can be warped later.
 
-    transformer = build_transformer(configuration)
-
+    transformer = Transformer(
+        d_model=configuration.embedding_dimension,
+        nhead=configuration.nhead,
+        dropout=configuration.dropout,
+    )
     model = DETR(
         transformer,
         num_classes=num_classes,

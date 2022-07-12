@@ -137,7 +137,6 @@ def main():
             validation_loader,
             device,
             epoch,
-            configuration.iou_threshold,
             writer,
         )
 

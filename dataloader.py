@@ -255,9 +255,8 @@ class DnaSequenceMapper:
 
     def __init__(self):
         nucleobase_symbols = ["A", "C", "G", "T", "N"]
-        padding_character = [""]
 
-        self.nucleobase_letters = sorted(nucleobase_symbols + padding_character)
+        self.nucleobase_letters = sorted(nucleobase_symbols)
 
         self.num_nucleobase_letters = len(self.nucleobase_letters)
 
@@ -297,7 +296,7 @@ if __name__ == "__main__":
     dataset = RepeatSequenceDataset(
         fasta_path="./data/genome_assemblies/datasets",
         annotations_path="./data/annotations",
-        chrs=["chr1", "chr2", "chrX"],
+        chromosomes=["chrX"],
         transform=transforms.Compose(
             [
                 SampleMapEncode(DnaSequenceMapper()),
@@ -308,7 +307,7 @@ if __name__ == "__main__":
         ),
     )
 
-    print(len(dataset))
+    print(dataset[0][0]["sequence"].shape, len(dataset))
     # repeat_dict = dict()
     # for repeat in dataset:
     #     key = repeat[1]["classes"].nelement()
