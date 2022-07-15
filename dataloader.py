@@ -159,6 +159,8 @@ def build_dataloader(configuration):
         fasta_path="./data/genome_assemblies/datasets",
         annotations_path="./data/annotations",
         chromosomes=configuration.chromosomes,
+        segment_length=configuration.segment_length,
+        overlap=configuration.overlap,
         transform=transforms.Compose(
             [
                 SampleMapEncode(DnaSequenceMapper()),
