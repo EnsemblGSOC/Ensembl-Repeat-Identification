@@ -2,7 +2,7 @@
 import pathlib
 import pickle
 
-from typing import List, Union
+from typing import List, Union, Type
 
 # third party
 import numpy as np
@@ -21,18 +21,64 @@ from config import repeat_class_IDs
 from utils import data_directory
 
 
+class DnaSequenceMapper:
+    """
+    DNA sequences translation to one-hot or label encoding.
+    """
+
+    def __init__(self):
+        nucleobase_symbols = ["A", "C", "G", "T", "N"]
+
+        self.nucleobase_letters = sorted(nucleobase_symbols)
+
+        self.num_nucleobase_letters = len(self.nucleobase_letters)
+
+        self.nucleobase_letter_to_index = {
+            nucleobase_letter: index
+            for index, nucleobase_letter in enumerate(self.nucleobase_letters)
+        }
+
+        self.index_to_nucleobase_letter = {
+            index: nucleobase_letter
+            for index, nucleobase_letter in enumerate(self.nucleobase_letters)
+        }
+
+    def sequence_to_one_hot(self, sequence):
+        sequence_indexes = [
+            self.nucleobase_letter_to_index[nucleobase_letter]
+            for nucleobase_letter in sequence
+        ]
+        one_hot_sequence = F.one_hot(
+            torch.tensor(sequence_indexes), num_classes=self.num_nucleobase_letters
+        )
+        one_hot_sequence = one_hot_sequence.type(torch.float32)
+
+        return one_hot_sequence
+
+    def sequence_to_label_encoding(self, sequence):
+        label_encoded_sequence = [
+            self.nucleobase_letter_to_index[nucleobase] for nucleobase in sequence
+        ]
+
+        label_encoded_sequence = torch.tensor(label_encoded_sequence, dtype=torch.int32)
+
+        return label_encoded_sequence
+
+
 class RepeatSequenceDataset(Dataset):
     def __init__(
         self,
         fasta_path: Union[str, pathlib.Path],
         annotations_path: Union[str, pathlib.Path],
         chromosomes: List[str],
+        dna_sequence_mapper: Type[DnaSequenceMapper],
         segment_length: int = 2000,
         overlap: int = 500,
         transform=None,
     ):
         super().__init__()
         self.chromosomes = chromosomes
+        self.dna_sequence_mapper = dna_sequence_mapper
         self.path = [f"{fasta_path}/{chromosome}.fa" for chromosome in self.chromosomes]
         self.annotation = [
             f"{annotations_path}/hg38_{chromosome}.csv"
@@ -124,6 +170,7 @@ class RepeatSequenceDataset(Dataset):
                 repeat_list.append(
                     (genome[start:end].seq.upper(), start, repeats_in_sequence)
                 )
+                print(repeat_list[0])
         return repeat_list
 
     def forward_strand(self, index):
@@ -155,22 +202,27 @@ class RepeatSequenceDataset(Dataset):
 
 def build_dataloader(configuration):
     validation_split = configuration.validation_split
+    dna_sequence_mapper = DnaSequenceMapper()
     dataset = RepeatSequenceDataset(
         fasta_path="./data/genome_assemblies/datasets",
         annotations_path="./data/annotations",
         chromosomes=configuration.chromosomes,
         segment_length=configuration.segment_length,
         overlap=configuration.overlap,
+        dna_sequence_mapper=dna_sequence_mapper,
         transform=transforms.Compose(
             [
-                SampleMapEncode(DnaSequenceMapper()),
+                SampleMapEncode(dna_sequence_mapper),
                 CoordinatesToTensor(),
                 NormalizeCoordinates(),
                 TranslateCoordinates(),
             ]
         ),
     )
-
+    configuration.dna_sequence_mapper = dataset.dna_sequence_mapper
+    configuration.num_nucleobase_letters = (
+        configuration.dna_sequence_mapper.num_nucleobase_letters
+    )
     dataset_size = len(dataset)
     indices = list(range(dataset_size))
     split = int(np.floor(validation_split * dataset_size))
@@ -248,50 +300,6 @@ class TranslateCoordinates:
         span = (target[:, 1]) - target[:, 0]  # [n]
 
         return (sample, torch.stack((center, span), axis=1))
-
-
-class DnaSequenceMapper:
-    """
-    DNA sequences translation to one-hot or label encoding.
-    """
-
-    def __init__(self):
-        nucleobase_symbols = ["A", "C", "G", "T", "N"]
-
-        self.nucleobase_letters = sorted(nucleobase_symbols)
-
-        self.num_nucleobase_letters = len(self.nucleobase_letters)
-
-        self.nucleobase_letter_to_index = {
-            nucleobase_letter: index
-            for index, nucleobase_letter in enumerate(self.nucleobase_letters)
-        }
-
-        self.index_to_nucleobase_letter = {
-            index: nucleobase_letter
-            for index, nucleobase_letter in enumerate(self.nucleobase_letters)
-        }
-
-    def sequence_to_one_hot(self, sequence):
-        sequence_indexes = [
-            self.nucleobase_letter_to_index[nucleobase_letter]
-            for nucleobase_letter in sequence
-        ]
-        one_hot_sequence = F.one_hot(
-            torch.tensor(sequence_indexes), num_classes=self.num_nucleobase_letters
-        )
-        one_hot_sequence = one_hot_sequence.type(torch.float32)
-
-        return one_hot_sequence
-
-    def sequence_to_label_encoding(self, sequence):
-        label_encoded_sequence = [
-            self.nucleobase_letter_to_index[nucleobase] for nucleobase in sequence
-        ]
-
-        label_encoded_sequence = torch.tensor(label_encoded_sequence, dtype=torch.int32)
-
-        return label_encoded_sequence
 
 
 if __name__ == "__main__":
