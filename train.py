@@ -111,13 +111,14 @@ def main():
     np.random.seed(seed)
     random.seed(seed)
 
+    train_loader, validation_loader = build_dataloader(configuration)
+
     model, criterion = build_model(configuration)
     model.to(device)
     criterion.to(device)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=configuration.lr)
 
-    train_loader, validation_loader = build_dataloader(configuration)
     writer = SummaryWriter()
     for epoch in tqdm(range(configuration.epochs)):
         train_one_epoch(
@@ -137,7 +138,6 @@ def main():
             validation_loader,
             device,
             epoch,
-            configuration.iou_threshold,
             writer,
         )
 
