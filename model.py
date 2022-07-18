@@ -5,53 +5,11 @@ import math
 import torch
 import torch.nn.functional as F
 from torch import nn, Tensor
+import pytorch_lightning as pl
 
 # project
 from matcher_segment import build_matcher, segment_IOU
 from transformer import Transformer, build_transformer
-
-
-class DETR(nn.Module):
-    """
-    This is the main model that performs segments detection and classification
-
-    Copy-paste from DETR module with modifications
-    """
-
-    def __init__(self, transformer, num_classes, num_queries):
-        """Initializes the model.
-        Parameters:
-            transformer: torch module of the transformer architecture.
-            num_classes: number of object classes
-            num_queries: number of object queries, ie detection slot. This is the maximal number of objects
-                        DETR can detect in an subsequence.
-        """
-        super().__init__()
-        self.num_queries = num_queries
-        self.transformer = transformer
-        hidden_dim = transformer.d_model
-        self.class_embed = nn.Linear(hidden_dim, num_classes + 1)
-        self.segment_embed = MLP(hidden_dim, hidden_dim, 2, 3)
-        self.query_embed = nn.Embedding(num_queries, hidden_dim)
-        self.pe = PositionalEncoding(hidden_dim)
-
-    def forward(self, sample: Tensor):
-        """
-        Parameters:
-            -- sample: batched sequences, of shape [batch_size x seq_len x embedding_len ]
-                 eg, when choosing one hot encoding, embedding_len will be 5, [A, T, C, G, N]
-        Return values
-            -- pred_logits: the classification logits (including no-object) for all queries.
-                            Shape= [batch_size x num_queries x (num_classes + 1)]
-            -- pred_boundaries: The normalized boundaries coordinates for all queries, represented as
-                            (center, width). These values are normalized in [0, 1].
-        """
-        pos = self.pe(sample)
-        hs = self.transformer(sample, self.query_embed.weight, pos)
-        outputs_class = self.class_embed(hs)
-        outputs_coord = self.segment_embed(hs).sigmoid()
-        out = {"pred_logits": outputs_class, "pred_boundaries": outputs_coord}
-        return out
 
 
 class MLP(nn.Module):
@@ -217,6 +175,98 @@ class SetCriterion(nn.Module):
             losses.update(self.get_loss(loss, outputs, targets, indices, num_boxes))
 
         return losses
+
+
+def build_criterion(configuration):
+    matcher = build_matcher(configuration)
+    losses = ["classes", "coordinates"]
+    weight_dict = {
+        "loss_ce": configuration.cost_class,
+        "loss_ssegments": configuration.cost_segments,
+        "loss_IOU": configuration.cost_siou,
+    }
+
+    criterion = SetCriterion(
+        configuration.num_classes,
+        matcher=matcher,
+        weight_dict=weight_dict,
+        eos_coef=configuration.eos_coef,
+        losses=losses,
+    )
+    return criterion
+
+
+class DETR(pl.LightningModule):
+    """
+    This is the main model that performs segments detection and classification
+
+    Copy-paste from DETR module with modifications
+    """
+
+    def __init__(self, transformer, num_classes, num_queries, criterion, configuration):
+        """Initializes the model.
+        Parameters:
+            transformer: torch module of the transformer architecture.
+            num_classes: number of object classes
+            num_queries: number of object queries, ie detection slot. This is the maximal number of objects
+                        DETR can detect in an subsequence.
+        """
+        super().__init__()
+        self.num_queries = num_queries
+        self.transformer = transformer
+        hidden_dim = transformer.d_model
+        self.class_embed = nn.Linear(hidden_dim, num_classes + 1)
+        self.segment_embed = MLP(hidden_dim, hidden_dim, 2, 3)
+        self.query_embed = nn.Embedding(num_queries, hidden_dim)
+        self.pe = PositionalEncoding(hidden_dim)
+        self.criterion = criterion
+        self.configuration = configuration
+
+    def forward(self, sample: Tensor):
+        """
+        Parameters:
+            -- sample: batched sequences, of shape [batch_size x seq_len x embedding_len ]
+                 eg, when choosing one hot encoding, embedding_len will be 5, [A, T, C, G, N]
+        Return values
+            -- pred_logits: the classification logits (including no-object) for all queries.
+                            Shape= [batch_size x num_queries x (num_classes + 1)]
+            -- pred_boundaries: The normalized boundaries coordinates for all queries, represented as
+                            (center, width). These values are normalized in [0, 1].
+        """
+        pos = self.pe(sample)
+        hs = self.transformer(sample, self.query_embed.weight, pos)
+        outputs_class = self.class_embed(hs)
+        outputs_coord = self.segment_embed(hs).sigmoid()
+        out = {"pred_logits": outputs_class, "pred_boundaries": outputs_coord}
+        return out
+
+    def training_step(self, batch, batch_idx):
+        samples, targets = batch
+        targets = [{k: v for k, v in t.items()} for t in targets]
+        outputs = self.forward(samples)
+        loss_dict = self.criterion(outputs, targets)
+        weight_dict = self.criterion.weight_dict
+        losses = sum(
+            loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict
+        )
+        self.log("train_loss", losses)
+        return losses
+
+    def validation_step(self, batch, batch_idx):
+        samples, targets = batch
+        targets = [{k: v for k, v in t.items()} for t in targets]
+        outputs = self.forward(samples)
+        loss_dict = self.criterion(outputs, targets)
+        weight_dict = self.criterion.weight_dict
+        losses = sum(
+            loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict
+        )
+        self.log("validation_loss", losses)
+        return losses
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.configuration.lr)
+        return optimizer
 
 
 def test_criterion():
