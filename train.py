@@ -27,12 +27,22 @@ def argument():
     parser.add_argument(
         "--configuration", type=str, help="experiment configuration file path"
     )
+    parser.add_argument(
+        "--datetime",
+        help="datetime string; if set this will be used instead of generating a new one",
+    )
     args = parser.parse_args()
     return args
 
 
 def main():
     args = argument()
+    if args.datetime:
+        configuration.datetime = args.datetime
+    else:
+        configuration.datetime = dt.datetime.now().isoformat(
+            sep="_", timespec="seconds"
+        )
     with open(args.configuration) as file:
         configuration = yaml.safe_load(file)
     configuration = AttributeDict(configuration)
