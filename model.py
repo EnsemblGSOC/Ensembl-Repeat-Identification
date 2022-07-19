@@ -203,7 +203,15 @@ class DETR(pl.LightningModule):
     Copy-paste from DETR module with modifications
     """
 
-    def __init__(self, transformer, num_classes, num_queries, criterion, configuration):
+    def __init__(
+        self,
+        transformer,
+        num_classes,
+        num_queries,
+        num_nucleobase_letters,
+        criterion,
+        configuration,
+    ):
         """Initializes the model.
         Parameters:
             transformer: torch module of the transformer architecture.
@@ -215,6 +223,7 @@ class DETR(pl.LightningModule):
         self.num_queries = num_queries
         self.transformer = transformer
         hidden_dim = transformer.d_model
+        self.emb = nn.Embedding(num_nucleobase_letters, hidden_dim)
         self.class_embed = nn.Linear(hidden_dim, num_classes + 1)
         self.segment_embed = MLP(hidden_dim, hidden_dim, 2, 3)
         self.query_embed = nn.Embedding(num_queries, hidden_dim)
@@ -233,6 +242,7 @@ class DETR(pl.LightningModule):
             -- pred_boundaries: The normalized boundaries coordinates for all queries, represented as
                             (center, width). These values are normalized in [0, 1].
         """
+        sample = self.emb(sample)
         pos = self.pe(sample)
         hs = self.transformer(sample, self.query_embed.weight, pos)
         outputs_class = self.class_embed(hs)

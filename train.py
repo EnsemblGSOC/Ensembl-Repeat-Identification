@@ -11,7 +11,7 @@ import numpy as np
 import torch
 import random
 import argparse
-from torch.utils.tensorboard import SummaryWriter
+
 from pytorch_lightning.utilities import AttributeDict
 import yaml
 import pytorch_lightning as pl
@@ -19,7 +19,7 @@ import pytorch_lightning as pl
 # project
 from dataloader import build_dataloader
 from model import DETR, build_criterion
-from transformer import build_transformer
+from transformer import Transformer
 
 
 def argument():
@@ -47,13 +47,18 @@ def main():
 
     training_dataloader, validation_dataloader = build_dataloader(configuration)
 
-    transformer = build_transformer(configuration)
+    transformer = Transformer(
+        d_model=configuration.embedding_dimension,
+        nhead=configuration.nhead,
+        dropout=configuration.dropout,
+    )
 
     criterion = build_criterion(configuration)
     model = DETR(
         transformer,
         num_classes=configuration.num_classes,
         num_queries=configuration.num_queries,
+        num_nucleobase_letters=configuration.num_nucleobase_letters,
         criterion=criterion,
         configuration=configuration,
     )
