@@ -37,11 +37,20 @@ def argument():
 
 def main():
     args = argument()
+    warnings.filterwarnings(
+        "ignore",
+        ".*does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument.*",
+    )
     with open(args.configuration) as file:
         configuration = yaml.safe_load(file)
     configuration = AttributeDict(configuration)
 
-    configuration.datetime = args.datetime
+    if args.datetime:
+        configuration.datetime = args.datetime
+    else:
+        configuration.datetime = dt.datetime.now().isoformat(
+            sep="_", timespec="seconds"
+        )
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(device)
