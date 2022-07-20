@@ -41,12 +41,8 @@ def main():
         configuration = yaml.safe_load(file)
     configuration = AttributeDict(configuration)
 
-    if args.datetime:
-        configuration.datetime = args.datetime
-    else:
-        configuration.datetime = dt.datetime.now().isoformat(
-            sep="_", timespec="seconds"
-        )
+    configuration.datetime = args.datetime
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(device)
     device = torch.device(device)
