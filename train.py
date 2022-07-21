@@ -78,8 +78,6 @@ def main():
         configuration=configuration,
     )
 
-    configuration.datetime = dt.datetime.now().isoformat(sep="_", timespec="seconds")
-
     configuration.logging_version = f"{configuration.experiment_prefix}_{configuration.dataset_id}_{configuration.datetime}"
 
     tensorboard_logger = pl.loggers.TensorBoardLogger(
