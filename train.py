@@ -87,12 +87,12 @@ def main():
         default_hp_metric=False,
     )
 
-    early_stopping_callback = pl.callbacks.early_stopping.EarlyStopping(
-        monitor="validation_loss",
-        min_delta=configuration.loss_delta,
-        patience=configuration.patience,
-        verbose=True,
-    )
+    # early_stopping_callback = pl.callbacks.early_stopping.EarlyStopping(
+    #     monitor="validation_loss",
+    #     min_delta=configuration.loss_delta,
+    #     patience=configuration.patience,
+    #     verbose=True,
+    # )
 
     trainer = pl.Trainer(
         gpus=configuration.gpus,
