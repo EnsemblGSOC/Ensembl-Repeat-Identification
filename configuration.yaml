@@ -9,9 +9,9 @@ experiment_prefix: standard
 
 # dataset
 ################################################################################
-#chromosomes: ['chr1', 'chr2', 'chrX']
+chromosomes: ['chr1', 'chr2', 'chr3']
 dataset_id: hg38
-chromosomes: ['chr10']
+#chromosomes: ['chr10']
 segment_length: 2000
 overlap: 500
 num_classes: 5 

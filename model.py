@@ -1,5 +1,6 @@
 # standard library
 import math
+from typing import List
 
 # third party
 import torch
@@ -10,6 +11,7 @@ import pytorch_lightning as pl
 # project
 from matcher_segment import build_matcher, segment_IOU
 from transformer import Transformer
+from mAP_validation import mean_average_precision
 
 
 class MLP(nn.Module):
@@ -221,6 +223,7 @@ class DETR(pl.LightningModule):
         """
         super().__init__()
         self.num_queries = num_queries
+        self.num_classes = num_classes
         self.transformer = transformer
         hidden_dim = transformer.d_model
         self.emb = nn.Embedding(num_nucleobase_letters, hidden_dim)
@@ -231,7 +234,7 @@ class DETR(pl.LightningModule):
         self.criterion = criterion
         self.configuration = configuration
 
-    def forward(self, sample: Tensor):
+    def forward(self, sample: Tensor, seq_starts: List[int]):
         """
         Parameters:
             -- sample: batched sequences, of shape [batch_size x seq_len x embedding_len ]
@@ -247,31 +250,57 @@ class DETR(pl.LightningModule):
         hs = self.transformer(sample, self.query_embed.weight, pos)
         outputs_class = self.class_embed(hs)
         outputs_coord = self.segment_embed(hs).sigmoid()
-        out = {"pred_logits": outputs_class, "pred_boundaries": outputs_coord}
+
+        # ([batch_size]) -> [batch_size, num_queries]
+
+        seq_starts = [
+            [seq_start for _ in range(self.num_queries)] for seq_start in seq_starts
+        ]
+        out = {
+            "pred_logits": outputs_class,
+            "pred_boundaries": outputs_coord,
+            "seq_start": seq_starts,
+        }
         return out
 
     def training_step(self, batch, batch_idx):
-        samples, targets = batch
+        samples, seq_starts, targets = batch
         targets = [{k: v for k, v in t.items()} for t in targets]
-        outputs = self.forward(samples)
+        outputs = self.forward(samples, seq_starts)
+        mAP = mean_average_precision(
+            outputs=outputs,
+            targets=targets,
+            iou_threshold=0.5,
+            num_classes=self.num_classes,
+        )
         loss_dict = self.criterion(outputs, targets)
         weight_dict = self.criterion.weight_dict
         losses = sum(
             loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict
         )
         self.log("train_loss", losses)
+        self.log("mAP", mAP)
         return losses
 
     def validation_step(self, batch, batch_idx):
-        samples, targets = batch
+        samples, seq_starts, targets = batch
         targets = [{k: v for k, v in t.items()} for t in targets]
-        outputs = self.forward(samples)
+        outputs = self.forward(samples, seq_starts)
+        mAP = mean_average_precision(
+            outputs=outputs,
+            targets=targets,
+            iou_threshold=0.5,
+            num_classes=self.num_classes,
+        )
+
         loss_dict = self.criterion(outputs, targets)
         weight_dict = self.criterion.weight_dict
         losses = sum(
             loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict
         )
         self.log("validation_loss", losses)
+        self.log("mAP", mAP)
+
         return losses
 
     def configure_optimizers(self):
@@ -324,31 +353,25 @@ def build_model(configuration):
         num_queries=num_queries,
         num_nucleobase_letters=configuration.num_nucleobase_letters,
     )
-    matcher = build_matcher(configuration)
-    losses = ["classes", "coordinates"]
-    weight_dict = {
-        "loss_ce": configuration.cost_class,
-        "loss_ssegments": configuration.cost_segments,
-        "loss_IOU": configuration.cost_siou,
-    }
-
-    criterion = SetCriterion(
-        num_classes,
-        matcher=matcher,
-        weight_dict=weight_dict,
-        eos_coef=configuration.eos_coef,
-        losses=losses,
-    )
 
     return model, criterion
 
 
 if __name__ == "__main__":
-    # n, s, e = 1, 100, 5
-    # num_queries = 100
-    # transformer = Transformer(d_model=5, nhead=5)
-    # model = DETR(transformer=transformer, num_classes=11, num_queries=num_queries)
-    # x = torch.rand(n, s, e)
-    # output = model(x)
-    # print(output)
-    test_criterion()
+
+    n, s, e = 10, 100, 5
+    num_queries = 100
+    fake_configuration = 1
+    transformer = Transformer(d_model=5, nhead=5)
+    criterion = 1
+    model = DETR(
+        transformer=transformer,
+        num_classes=11,
+        num_queries=num_queries,
+        configuration=fake_configuration,
+        criterion=criterion,
+        num_nucleobase_letters=6,
+    )
+    x = torch.rand(n, s, e)
+    output = model(x)
+    print(output)

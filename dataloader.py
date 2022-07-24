@@ -170,7 +170,6 @@ class RepeatSequenceDataset(Dataset):
                 repeat_list.append(
                     (genome[start:end].seq.upper(), start, repeats_in_sequence)
                 )
-                print(repeat_list[0])
         return repeat_list
 
     def forward_strand(self, index):
@@ -185,7 +184,12 @@ class RepeatSequenceDataset(Dataset):
 
         coordinates = repeats_in_sequence[["start", "end"]]
         sample, coordinates = self.transform((sample, coordinates))
-        target = {"classes": repeat_ids_tensor, "coordinates": coordinates}
+
+        target = {
+            "seq_start": [start for _ in range(coordinates.shape[0])],
+            "classes": repeat_ids_tensor,
+            "coordinates": coordinates,
+        }
         return (sample, target)
 
     def __getitem__(self, index):
@@ -196,8 +200,9 @@ class RepeatSequenceDataset(Dataset):
 
     def collate_fn(self, batch):
         sequences = [data[0]["sequence"] for data in batch]
+        seq_starts = [data[0]["start"] for data in batch]
         labels = [data[1] for data in batch]
-        return torch.stack(sequences), labels
+        return torch.stack(sequences), seq_starts, labels
 
 
 def build_dataloader(configuration):
@@ -303,13 +308,15 @@ class TranslateCoordinates:
 
 
 if __name__ == "__main__":
+    dna_sequence_mapper = DnaSequenceMapper()
     dataset = RepeatSequenceDataset(
         fasta_path="./data/genome_assemblies/datasets",
         annotations_path="./data/annotations",
         chromosomes=["chrX"],
+        dna_sequence_mapper=dna_sequence_mapper,
         transform=transforms.Compose(
             [
-                SampleMapEncode(DnaSequenceMapper()),
+                SampleMapEncode(dna_sequence_mapper),
                 CoordinatesToTensor(),
                 NormalizeCoordinates(),
                 TranslateCoordinates(),
@@ -317,7 +324,7 @@ if __name__ == "__main__":
         ),
     )
 
-    print(dataset[0][0]["sequence"].shape, len(dataset))
+    print(dataset[0])
     # repeat_dict = dict()
     # for repeat in dataset:
     #     key = repeat[1]["classes"].nelement()
