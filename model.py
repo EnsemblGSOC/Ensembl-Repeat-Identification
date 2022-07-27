@@ -280,7 +280,7 @@ class DETR(pl.LightningModule):
         )
         self.log("train_loss", train_losses)
         self.log("mAP", mAP)
-        return losses
+        return train_losses
 
     def validation_step(self, batch, batch_idx):
         samples, seq_starts, targets = batch
@@ -301,7 +301,7 @@ class DETR(pl.LightningModule):
         self.log("val_losses", val_losses)
         self.log("mAP", mAP)
 
-        return losses
+        return val_losses
 
     def test_step(self, batch, batch_idx):
         samples, seq_starts, targets = batch
@@ -322,7 +322,7 @@ class DETR(pl.LightningModule):
         self.log("test_loss", test_losses)
         self.log("mAP", mAP)
 
-        return losses
+        return test_losses
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.configuration.lr)
