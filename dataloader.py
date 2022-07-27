@@ -206,7 +206,7 @@ class RepeatSequenceDataset(Dataset):
 
 
 def build_dataloader(configuration):
-    validation_split = configuration.validation_split
+    separate_split = configuration.separate_split
     dna_sequence_mapper = DnaSequenceMapper()
     dataset = RepeatSequenceDataset(
         fasta_path="./data/genome_assemblies/datasets",
@@ -230,14 +230,18 @@ def build_dataloader(configuration):
     )
     dataset_size = len(dataset)
     indices = list(range(dataset_size))
-    split = int(np.floor(validation_split * dataset_size))
+    split = int(np.floor(separate_split * dataset_size))
 
     np.random.seed(configuration.seed)
     np.random.shuffle(indices)
-    train_indices, val_indices = indices[split:], indices[:split]
+    train_indices, val_indices, test_indices = (
+        indices[split:],
+        indices[:split],
+        indices[split:],
+    )
     train_sampler = SubsetRandomSampler(train_indices)
     valid_sampler = SubsetRandomSampler(val_indices)
-
+    test_sampler = SubsetRandomSampler(test_indices)
     train_loader = torch.utils.data.DataLoader(
         dataset,
         batch_size=configuration.batch_size,
@@ -250,7 +254,13 @@ def build_dataloader(configuration):
         sampler=valid_sampler,
         collate_fn=dataset.collate_fn,
     )
-    return train_loader, validation_loader
+    test_loader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=configuration.batch_size,
+        sampler=test_sampler,
+        collate_fn=dataset.collate_fn,
+    )
+    return train_loader, validation_loader, test_loader
 
 
 class SampleMapEncode:

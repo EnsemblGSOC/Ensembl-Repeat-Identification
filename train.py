@@ -61,7 +61,9 @@ def main():
     np.random.seed(seed)
     random.seed(seed)
 
-    training_dataloader, validation_dataloader = build_dataloader(configuration)
+    training_dataloader, validation_dataloader, test_dataloader = build_dataloader(
+        configuration
+    )
 
     transformer = Transformer(
         d_model=configuration.embedding_dimension,
@@ -87,11 +89,18 @@ def main():
         version=configuration.logging_version,
         default_hp_metric=False,
     )
+    early_stopping_callback = pl.callbacks.early_stopping.EarlyStopping(
+        monitor="val_losses",
+        min_delta=configuration.loss_delta,
+        patience=configuration.patience,
+        verbose=True,
+    )
 
     trainer = pl.Trainer(
         gpus=configuration.gpus,
         logger=tensorboard_logger,
         max_epochs=configuration.max_epochs,
+        callbacks=[early_stopping_callback],
         log_every_n_steps=1,
         profiler=configuration.profiler,
     )
@@ -101,6 +110,7 @@ def main():
         train_dataloaders=training_dataloader,
         val_dataloaders=validation_dataloader,
     )
+    trainer.test(ckpt_path="best", dataloaders=test_dataloader)
 
 
 if __name__ == "__main__":

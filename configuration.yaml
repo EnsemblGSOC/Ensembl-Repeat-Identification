@@ -37,12 +37,12 @@ nhead: 8
 lr: 0.0001
 max_epochs: 300
 batch_size: 2
-validation_split: 0.2 
+separate_split: 0.3 
 max_norm: 0
 seed: 42
 dropout: 0.3
 gpus: 1
 loss_delta: 0
-patience: 3
+patience: 5
 profiler: pytorch
 ################################################################################

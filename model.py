@@ -275,10 +275,10 @@ class DETR(pl.LightningModule):
         )
         loss_dict = self.criterion(outputs, targets)
         weight_dict = self.criterion.weight_dict
-        losses = sum(
+        train_losses = sum(
             loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict
         )
-        self.log("train_loss", losses)
+        self.log("train_loss", train_losses)
         self.log("mAP", mAP)
         return losses
 
@@ -295,10 +295,31 @@ class DETR(pl.LightningModule):
 
         loss_dict = self.criterion(outputs, targets)
         weight_dict = self.criterion.weight_dict
-        losses = sum(
+        val_losses = sum(
             loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict
         )
-        self.log("validation_loss", losses)
+        self.log("val_losses", val_losses)
+        self.log("mAP", mAP)
+
+        return losses
+
+    def test_step(self, batch, batch_idx):
+        samples, seq_starts, targets = batch
+        targets = [{k: v for k, v in t.items()} for t in targets]
+        outputs = self.forward(samples, seq_starts)
+        mAP = mean_average_precision(
+            outputs=outputs,
+            targets=targets,
+            iou_threshold=0.5,
+            num_classes=self.num_classes,
+        )
+
+        loss_dict = self.criterion(outputs, targets)
+        weight_dict = self.criterion.weight_dict
+        test_losses = sum(
+            loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict
+        )
+        self.log("test_loss", test_losses)
         self.log("mAP", mAP)
 
         return losses
