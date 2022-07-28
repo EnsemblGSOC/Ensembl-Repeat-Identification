@@ -279,7 +279,7 @@ class DETR(pl.LightningModule):
             loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict
         )
         self.log("train_loss", train_losses, batch_size=self.configuration.batch_size)
-        self.log("mAP", mAP)
+        self.log("mAP", mAP, batch_size=self.configuration.batch_size)
 
         return train_losses
 
@@ -300,7 +300,7 @@ class DETR(pl.LightningModule):
             loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict
         )
         self.log("val_losses", val_losses, batch_size=self.configuration.batch_size)
-        self.log("mAP", mAP)
+        self.log("mAP", mAP, batch_size=self.configuration.batch_size)
 
         return val_losses
 
@@ -321,7 +321,7 @@ class DETR(pl.LightningModule):
             loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict
         )
         self.log("test_loss", test_losses, batch_size=self.configuration.batch_size)
-        self.log("mAP", mAP)
+        self.log("mAP", mAP, batch_size=self.configuration.batch_size)
 
         return test_losses
 
