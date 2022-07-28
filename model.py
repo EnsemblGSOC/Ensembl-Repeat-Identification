@@ -263,7 +263,7 @@ class DETR(pl.LightningModule):
         }
         return out
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch, batch_idx, configuration):
         samples, seq_starts, targets = batch
         targets = [{k: v for k, v in t.items()} for t in targets]
         outputs = self.forward(samples, seq_starts)
@@ -283,7 +283,7 @@ class DETR(pl.LightningModule):
 
         return train_losses
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch, batch_idx, configuration):
         samples, seq_starts, targets = batch
         targets = [{k: v for k, v in t.items()} for t in targets]
         outputs = self.forward(samples, seq_starts)
@@ -304,7 +304,7 @@ class DETR(pl.LightningModule):
 
         return val_losses
 
-    def test_step(self, batch, batch_idx):
+    def test_step(self, batch, batch_idx, configuration):
         samples, seq_starts, targets = batch
         targets = [{k: v for k, v in t.items()} for t in targets]
         outputs = self.forward(samples, seq_starts)
