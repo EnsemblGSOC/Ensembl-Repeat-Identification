@@ -278,8 +278,9 @@ class DETR(pl.LightningModule):
         train_losses = sum(
             loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict
         )
-        self.log("train_loss", train_losses)
+        self.log("train_loss", train_losses, batch_size=configuration.batch_size)
         self.log("mAP", mAP)
+
         return train_losses
 
     def validation_step(self, batch, batch_idx):
@@ -298,7 +299,7 @@ class DETR(pl.LightningModule):
         val_losses = sum(
             loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict
         )
-        self.log("val_losses", val_losses)
+        self.log("val_losses", val_losses, batch_size=configuration.batch_size)
         self.log("mAP", mAP)
 
         return val_losses
@@ -319,7 +320,7 @@ class DETR(pl.LightningModule):
         test_losses = sum(
             loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict
         )
-        self.log("test_loss", test_losses)
+        self.log("test_loss", test_losses, batch_size=configuration.batch_size)
         self.log("mAP", mAP)
 
         return test_losses
