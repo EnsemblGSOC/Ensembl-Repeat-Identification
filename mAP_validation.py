@@ -91,8 +91,8 @@ def mean_average_precision(outputs, targets, iou_threshold, num_classes):
 
             for idx, gt in enumerate(ground_truth_img):
                 iou = segment_IOU(
-                    torch.tensor(detection[2]),
-                    torch.tensor(gt[2]),
+                    detection[2].clone().detach(),
+                    gt[2].clone().detach(),
                 )
 
                 if iou > best_iou:

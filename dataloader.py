@@ -206,7 +206,6 @@ class RepeatSequenceDataset(Dataset):
 
 
 def build_dataloader(configuration):
-    separate_split = configuration.separate_split
     dna_sequence_mapper = DnaSequenceMapper()
     dataset = RepeatSequenceDataset(
         fasta_path="./data/genome_assemblies/datasets",
@@ -230,14 +229,15 @@ def build_dataloader(configuration):
     )
     dataset_size = len(dataset)
     indices = list(range(dataset_size))
-    split = int(np.floor(separate_split * dataset_size))
 
+    split1 = int(np.floor(configuration.validation_ratio * dataset_size))  # 0.6
+    split2 = int(np.floor(configuration.test_ratio * dataset_size))  # 0.2
     np.random.seed(configuration.seed)
     np.random.shuffle(indices)
     train_indices, val_indices, test_indices = (
-        indices[split:],
-        indices[:split],
-        indices[split:],
+        indices[0:split1],
+        indices[split1:split2],
+        indices[split2:],
     )
     train_sampler = SubsetRandomSampler(train_indices)
     valid_sampler = SubsetRandomSampler(val_indices)
