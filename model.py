@@ -263,7 +263,7 @@ class DETR(pl.LightningModule):
         }
         return out
 
-    def training_step(self, batch, batch_idx, configuration):
+    def training_step(self, batch, batch_idx):
         samples, seq_starts, targets = batch
         targets = [{k: v for k, v in t.items()} for t in targets]
         outputs = self.forward(samples, seq_starts)
@@ -278,12 +278,12 @@ class DETR(pl.LightningModule):
         train_losses = sum(
             loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict
         )
-        self.log("train_loss", train_losses, batch_size=configuration.batch_size)
+        self.log("train_loss", train_losses, batch_size=self.configuration.batch_size)
         self.log("mAP", mAP)
 
         return train_losses
 
-    def validation_step(self, batch, batch_idx, configuration):
+    def validation_step(self, batch, batch_idx):
         samples, seq_starts, targets = batch
         targets = [{k: v for k, v in t.items()} for t in targets]
         outputs = self.forward(samples, seq_starts)
@@ -299,12 +299,12 @@ class DETR(pl.LightningModule):
         val_losses = sum(
             loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict
         )
-        self.log("val_losses", val_losses, batch_size=configuration.batch_size)
+        self.log("val_losses", val_losses, batch_size=self.configuration.batch_size)
         self.log("mAP", mAP)
 
         return val_losses
 
-    def test_step(self, batch, batch_idx, configuration):
+    def test_step(self, batch, batch_idx):
         samples, seq_starts, targets = batch
         targets = [{k: v for k, v in t.items()} for t in targets]
         outputs = self.forward(samples, seq_starts)
@@ -320,7 +320,7 @@ class DETR(pl.LightningModule):
         test_losses = sum(
             loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict
         )
-        self.log("test_loss", test_losses, batch_size=configuration.batch_size)
+        self.log("test_loss", test_losses, batch_size=self.configuration.batch_size)
         self.log("mAP", mAP)
 
         return test_losses
