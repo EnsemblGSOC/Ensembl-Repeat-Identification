@@ -229,16 +229,16 @@ def build_dataloader(configuration):
     )
     dataset_size = len(dataset)
     indices = list(range(dataset_size))
-
-    split1 = int(np.floor(configuration.validation_ratio * dataset_size))  # 0.6
-    split2 = int(np.floor(configuration.test_ratio * dataset_size))  # 0.2
+    validation_size = int(configuration.validation_ratio * dataset_size)
+    test_size = int(configuration.test_ratio * dataset_size)
     np.random.seed(configuration.seed)
     np.random.shuffle(indices)
-    train_indices, val_indices, test_indices = (
-        indices[0:split1],
-        indices[split1:split2],
-        indices[split2:],
+    val_indices, test_indices, train_indices = (
+        indices[:validation_size],
+        indices[validation_size : validation_size + test_size],
+        indices[validation_size + test_size :],
     )
+
     train_sampler = SubsetRandomSampler(train_indices)
     valid_sampler = SubsetRandomSampler(val_indices)
     test_sampler = SubsetRandomSampler(test_indices)

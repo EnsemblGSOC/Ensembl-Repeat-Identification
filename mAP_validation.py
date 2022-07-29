@@ -16,15 +16,17 @@ def segment_IOU(segment1, segment2):
 
 
 def mean_average_precision(outputs, targets, iou_threshold, num_classes):
+    """
+    Calculates mean average precision
+    Parameters:
+        outputs: dictionary from dataloader
+        targets: Similar as outputs
+        iou_threshold (float): threshold where predicted overlap is correct
+        num_classes (int): number of classes
+    Returns:
+        float: mAP value across all classes given a specific IoU threshold
+    """
 
-    # pred_logits = torch.rand(batch_size, num_queries, num_classes + 1)
-    # pred_boxes = torch.rand(batch_size, num_queries, 2)
-    # outputs = {"pred_logits": pred_logits, "pred_boundaries": pred_boxes}
-
-    #  {
-    #         "classes": torch.randint(low=0, high=num_classes, size=(num_target_boxes,)),
-    #         "coordinates": torch.rand(num_target_boxes, 2),
-    #     }
     average_precisions = []
 
     # used for numerical stability later on

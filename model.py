@@ -265,7 +265,7 @@ class DETR(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         samples, seq_starts, targets = batch
-        targets = [{k: v for k, v in t.items()} for t in targets]
+        # targets = [{k: v for k, v in t.items()} for t in targets]
         outputs = self.forward(samples, seq_starts)
         mAP = mean_average_precision(
             outputs=outputs,
@@ -285,7 +285,7 @@ class DETR(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         samples, seq_starts, targets = batch
-        targets = [{k: v for k, v in t.items()} for t in targets]
+        # targets = [{k: v for k, v in t.items()} for t in targets]
         outputs = self.forward(samples, seq_starts)
         mAP = mean_average_precision(
             outputs=outputs,
@@ -306,7 +306,7 @@ class DETR(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         samples, seq_starts, targets = batch
-        targets = [{k: v for k, v in t.items()} for t in targets]
+        # targets = [{k: v for k, v in t.items()} for t in targets]
         outputs = self.forward(samples, seq_starts)
         mAP = mean_average_precision(
             outputs=outputs,
