@@ -37,8 +37,8 @@ nhead: 8
 lr: 0.0001
 max_epochs: 300
 batch_size: 2
-validation_ratio: 0.3
-test_ratio: 0.4
+validation_ratio: 0.1
+test_ratio: 0.1
 max_norm: 0
 seed: 42
 dropout: 0.3
