@@ -1,59 +1,17 @@
 # standard library
 import math
+from typing import List
 
 # third party
 import torch
 import torch.nn.functional as F
 from torch import nn, Tensor
+import pytorch_lightning as pl
 
 # project
 from matcher_segment import build_matcher, segment_IOU
 from transformer import Transformer
-
-
-class DETR(nn.Module):
-    """
-    This is the main model that performs segments detection and classification
-
-    Copy-paste from DETR module with modifications
-    """
-
-    def __init__(self, transformer, num_classes, num_queries, num_nucleobase_letters):
-        """Initializes the model.
-        Parameters:
-            transformer: torch module of the transformer architecture.
-            num_classes: number of object classes
-            num_queries: number of object queries, ie detection slot. This is the maximal number of objects
-                        DETR can detect in an subsequence.
-        """
-        super().__init__()
-        self.num_queries = num_queries
-        self.transformer = transformer
-        hidden_dim = transformer.d_model
-        self.emb = nn.Embedding(num_nucleobase_letters, hidden_dim)
-        self.class_embed = nn.Linear(hidden_dim, num_classes + 1)
-        self.segment_embed = MLP(hidden_dim, hidden_dim, 2, 3)
-        self.query_embed = nn.Embedding(num_queries, hidden_dim)
-        self.pe = PositionalEncoding(hidden_dim)
-
-    def forward(self, sample: Tensor):
-        """
-        Parameters:
-            -- sample: batched sequences, of shape [batch_size x seq_len x embedding_len ]
-                 eg, when choosing one hot encoding, embedding_len will be 5, [A, T, C, G, N]
-        Return values
-            -- pred_logits: the classification logits (including no-object) for all queries.
-                            Shape= [batch_size x num_queries x (num_classes + 1)]
-            -- pred_boundaries: The normalized boundaries coordinates for all queries, represented as
-                            (center, width). These values are normalized in [0, 1].
-        """
-        sample = self.emb(sample)
-        pos = self.pe(sample)
-        hs = self.transformer(sample, self.query_embed.weight, pos)
-        outputs_class = self.class_embed(hs)
-        outputs_coord = self.segment_embed(hs).sigmoid()
-        out = {"pred_logits": outputs_class, "pred_boundaries": outputs_coord}
-        return out
+from mAP_validation import mean_average_precision
 
 
 class MLP(nn.Module):
@@ -221,6 +179,154 @@ class SetCriterion(nn.Module):
         return losses
 
 
+def build_criterion(configuration):
+    matcher = build_matcher(configuration)
+    losses = ["classes", "coordinates"]
+    weight_dict = {
+        "loss_ce": configuration.cost_class,
+        "loss_ssegments": configuration.cost_segments,
+        "loss_IOU": configuration.cost_siou,
+    }
+
+    criterion = SetCriterion(
+        configuration.num_classes,
+        matcher=matcher,
+        weight_dict=weight_dict,
+        eos_coef=configuration.eos_coef,
+        losses=losses,
+    )
+    return criterion
+
+
+class DETR(pl.LightningModule):
+    """
+    This is the main model that performs segments detection and classification
+
+    Copy-paste from DETR module with modifications
+    """
+
+    def __init__(
+        self,
+        transformer,
+        num_classes,
+        num_queries,
+        num_nucleobase_letters,
+        criterion,
+        configuration,
+    ):
+        """Initializes the model.
+        Parameters:
+            transformer: torch module of the transformer architecture.
+            num_classes: number of object classes
+            num_queries: number of object queries, ie detection slot. This is the maximal number of objects
+                        DETR can detect in an subsequence.
+        """
+        super().__init__()
+        self.num_queries = num_queries
+        self.num_classes = num_classes
+        self.transformer = transformer
+        hidden_dim = transformer.d_model
+        self.emb = nn.Embedding(num_nucleobase_letters, hidden_dim)
+        self.class_embed = nn.Linear(hidden_dim, num_classes + 1)
+        self.segment_embed = MLP(hidden_dim, hidden_dim, 2, 3)
+        self.query_embed = nn.Embedding(num_queries, hidden_dim)
+        self.pe = PositionalEncoding(hidden_dim)
+        self.criterion = criterion
+        self.configuration = configuration
+
+    def forward(self, sample: Tensor, seq_starts: List[int]):
+        """
+        Parameters:
+            -- sample: batched sequences, of shape [batch_size x seq_len x embedding_len ]
+                 eg, when choosing one hot encoding, embedding_len will be 5, [A, T, C, G, N]
+        Return values
+            -- pred_logits: the classification logits (including no-object) for all queries.
+                            Shape= [batch_size x num_queries x (num_classes + 1)]
+            -- pred_boundaries: The normalized boundaries coordinates for all queries, represented as
+                            (center, width). These values are normalized in [0, 1].
+        """
+        sample = self.emb(sample)
+        pos = self.pe(sample)
+        hs = self.transformer(sample, self.query_embed.weight, pos)
+        outputs_class = self.class_embed(hs)
+        outputs_coord = self.segment_embed(hs).sigmoid()
+
+        # ([batch_size]) -> [batch_size, num_queries]
+
+        seq_starts = [
+            [seq_start for _ in range(self.num_queries)] for seq_start in seq_starts
+        ]
+        out = {
+            "pred_logits": outputs_class,
+            "pred_boundaries": outputs_coord,
+            "seq_start": seq_starts,
+        }
+        return out
+
+    def training_step(self, batch, batch_idx):
+        samples, seq_starts, targets = batch
+        outputs = self.forward(samples, seq_starts)
+        mAP = mean_average_precision(
+            outputs=outputs,
+            targets=targets,
+            iou_threshold=0.5,
+            num_classes=self.num_classes,
+        )
+        loss_dict = self.criterion(outputs, targets)
+        weight_dict = self.criterion.weight_dict
+        train_losses = sum(
+            loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict
+        )
+        self.log("train_loss", train_losses, batch_size=self.configuration.batch_size)
+        self.log("mAP", mAP, batch_size=self.configuration.batch_size)
+
+        return train_losses
+
+    def validation_step(self, batch, batch_idx):
+        samples, seq_starts, targets = batch
+        outputs = self.forward(samples, seq_starts)
+        mAP = mean_average_precision(
+            outputs=outputs,
+            targets=targets,
+            iou_threshold=0.5,
+            num_classes=self.num_classes,
+        )
+
+        loss_dict = self.criterion(outputs, targets)
+        weight_dict = self.criterion.weight_dict
+        val_losses = sum(
+            loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict
+        )
+        self.log("val_losses", val_losses, batch_size=self.configuration.batch_size)
+        self.log("mAP", mAP, batch_size=self.configuration.batch_size)
+
+        return val_losses
+
+    def test_step(self, batch, batch_idx):
+        samples, seq_starts, targets = batch
+        outputs = self.forward(samples, seq_starts)
+        mAP = mean_average_precision(
+            outputs=outputs,
+            targets=targets,
+            iou_threshold=0.5,
+            num_classes=self.num_classes,
+        )
+
+        loss_dict = self.criterion(outputs, targets)
+        weight_dict = self.criterion.weight_dict
+        test_losses = sum(
+            loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict
+        )
+        self.log("test_loss", test_losses, batch_size=self.configuration.batch_size)
+        self.log("mAP", mAP, batch_size=self.configuration.batch_size)
+
+        return test_losses
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.configuration.lr)
+        return optimizer
+
+
 def test_criterion():
     batch_size, num_queries, num_classes = 2, 10, 3
 
@@ -266,31 +372,25 @@ def build_model(configuration):
         num_queries=num_queries,
         num_nucleobase_letters=configuration.num_nucleobase_letters,
     )
-    matcher = build_matcher(configuration)
-    losses = ["classes", "coordinates"]
-    weight_dict = {
-        "loss_ce": configuration.cost_class,
-        "loss_ssegments": configuration.cost_segments,
-        "loss_IOU": configuration.cost_siou,
-    }
-
-    criterion = SetCriterion(
-        num_classes,
-        matcher=matcher,
-        weight_dict=weight_dict,
-        eos_coef=configuration.eos_coef,
-        losses=losses,
-    )
 
     return model, criterion
 
 
 if __name__ == "__main__":
-    # n, s, e = 1, 100, 5
-    # num_queries = 100
-    # transformer = Transformer(d_model=5, nhead=5)
-    # model = DETR(transformer=transformer, num_classes=11, num_queries=num_queries)
-    # x = torch.rand(n, s, e)
-    # output = model(x)
-    # print(output)
-    test_criterion()
+
+    n, s, e = 10, 100, 5
+    num_queries = 100
+    fake_configuration = 1
+    transformer = Transformer(d_model=5, nhead=5)
+    criterion = 1
+    model = DETR(
+        transformer=transformer,
+        num_classes=11,
+        num_queries=num_queries,
+        configuration=fake_configuration,
+        criterion=criterion,
+        num_nucleobase_letters=6,
+    )
+    x = torch.rand(n, s, e)
+    output = model(x)
+    print(output)

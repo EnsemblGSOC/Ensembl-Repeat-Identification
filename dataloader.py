@@ -170,7 +170,6 @@ class RepeatSequenceDataset(Dataset):
                 repeat_list.append(
                     (genome[start:end].seq.upper(), start, repeats_in_sequence)
                 )
-                print(repeat_list[0])
         return repeat_list
 
     def forward_strand(self, index):
@@ -185,7 +184,12 @@ class RepeatSequenceDataset(Dataset):
 
         coordinates = repeats_in_sequence[["start", "end"]]
         sample, coordinates = self.transform((sample, coordinates))
-        target = {"classes": repeat_ids_tensor, "coordinates": coordinates}
+
+        target = {
+            "seq_start": [start for _ in range(coordinates.shape[0])],
+            "classes": repeat_ids_tensor,
+            "coordinates": coordinates,
+        }
         return (sample, target)
 
     def __getitem__(self, index):
@@ -196,12 +200,12 @@ class RepeatSequenceDataset(Dataset):
 
     def collate_fn(self, batch):
         sequences = [data[0]["sequence"] for data in batch]
+        seq_starts = [data[0]["start"] for data in batch]
         labels = [data[1] for data in batch]
-        return torch.stack(sequences), labels
+        return torch.stack(sequences), seq_starts, labels
 
 
 def build_dataloader(configuration):
-    validation_split = configuration.validation_split
     dna_sequence_mapper = DnaSequenceMapper()
     dataset = RepeatSequenceDataset(
         fasta_path="./data/genome_assemblies/datasets",
@@ -225,14 +229,19 @@ def build_dataloader(configuration):
     )
     dataset_size = len(dataset)
     indices = list(range(dataset_size))
-    split = int(np.floor(validation_split * dataset_size))
-
+    validation_size = int(configuration.validation_ratio * dataset_size)
+    test_size = int(configuration.test_ratio * dataset_size)
     np.random.seed(configuration.seed)
     np.random.shuffle(indices)
-    train_indices, val_indices = indices[split:], indices[:split]
+    val_indices, test_indices, train_indices = (
+        indices[:validation_size],
+        indices[validation_size : validation_size + test_size],
+        indices[validation_size + test_size :],
+    )
+
     train_sampler = SubsetRandomSampler(train_indices)
     valid_sampler = SubsetRandomSampler(val_indices)
-
+    test_sampler = SubsetRandomSampler(test_indices)
     train_loader = torch.utils.data.DataLoader(
         dataset,
         batch_size=configuration.batch_size,
@@ -245,7 +254,13 @@ def build_dataloader(configuration):
         sampler=valid_sampler,
         collate_fn=dataset.collate_fn,
     )
-    return train_loader, validation_loader
+    test_loader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=configuration.batch_size,
+        sampler=test_sampler,
+        collate_fn=dataset.collate_fn,
+    )
+    return train_loader, validation_loader, test_loader
 
 
 class SampleMapEncode:
@@ -303,13 +318,15 @@ class TranslateCoordinates:
 
 
 if __name__ == "__main__":
+    dna_sequence_mapper = DnaSequenceMapper()
     dataset = RepeatSequenceDataset(
         fasta_path="./data/genome_assemblies/datasets",
         annotations_path="./data/annotations",
         chromosomes=["chrX"],
+        dna_sequence_mapper=dna_sequence_mapper,
         transform=transforms.Compose(
             [
-                SampleMapEncode(DnaSequenceMapper()),
+                SampleMapEncode(dna_sequence_mapper),
                 CoordinatesToTensor(),
                 NormalizeCoordinates(),
                 TranslateCoordinates(),
@@ -317,7 +334,7 @@ if __name__ == "__main__":
         ),
     )
 
-    print(dataset[0][0]["sequence"].shape, len(dataset))
+    print(dataset[0])
     # repeat_dict = dict()
     # for repeat in dataset:
     #     key = repeat[1]["classes"].nelement()
