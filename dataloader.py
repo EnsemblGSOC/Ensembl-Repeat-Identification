@@ -64,7 +64,6 @@ class DnaSequenceMapper:
         return label_encoded_sequence
 
 
-<<<<<<< HEAD
 class CategoryMapper:
     """
     Categorical data mapping class, with methods to translate from the category
@@ -113,8 +112,6 @@ class CategoryMapper:
         return label
 
 
-=======
->>>>>>> a86846ea0c9b6381dd58103fcc3699709e9b93d8
 class RepeatSequenceDataset(Dataset):
     def __init__(
         self,
@@ -286,10 +283,7 @@ def build_dataloader(configuration):
             ]
         ),
     )
-<<<<<<< HEAD
     configuration.num_classes = dataset.category_mapper.num_categories
-=======
->>>>>>> a86846ea0c9b6381dd58103fcc3699709e9b93d8
     configuration.dna_sequence_mapper = dataset.dna_sequence_mapper
     configuration.num_nucleobase_letters = (
         configuration.dna_sequence_mapper.num_nucleobase_letters
@@ -337,13 +331,9 @@ class SampleMapEncode:
     def __call__(self, item):
         # [n, 2]
         sample, target_df = item
-<<<<<<< HEAD
         sample["sequence"] = self.sequence_mapper.sequence_to_label_encoding(
             sample["sequence"]
         )
-=======
-        sample["sequence"] = self.mapper.sequence_to_label_encoding(sample["sequence"])
->>>>>>> a86846ea0c9b6381dd58103fcc3699709e9b93d8
         return (sample, target_df)
 
 
