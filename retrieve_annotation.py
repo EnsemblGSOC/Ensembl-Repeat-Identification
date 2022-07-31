@@ -3,19 +3,21 @@ import csv
 import json
 import pathlib
 
-from typing import NamedTuple, Union
+from typing import NamedTuple, Union, List
 
 # third party
 import requests
 
 # project
 from config import chr_length, species_integrity, url_label_information
-from utils import data_directory, download_and_extract
+from utils import data_directory, download_and_extract, hits_to_dataframe
+from pytorch_lightning.utilities import AttributeDict
 
 
 class AnnotationInfo(NamedTuple):
     chromosome: str
     subtype: str
+    classification: str
     start: int
     end: int
 
@@ -46,7 +48,6 @@ def download_repeat_families(repeat_families_path: Union[str, pathlib.Path]):
         response_json = response.json()
 
         families_batch = response_json["results"]
-        print(families_batch)
         for family in families_batch:
             accession = family["accession"]
             assert accession not in families, f"duplicate accession ID {accession}"
@@ -63,7 +64,7 @@ def download_repeat_families(repeat_families_path: Union[str, pathlib.Path]):
         json.dump(families, json_file)
 
 
-def retrieve_annotation(assembly: str):
+def retrieve_annotation(assembly: str, configuration: AttributeDict):
     """Download the assembly annotation and convert to appropriate format.
 
     Args:
@@ -84,7 +85,7 @@ def retrieve_annotation(assembly: str):
 
     # download and extract the original annotations file
     checksum = species_integrity[f"{assembly}.hits"]
-    print(checksum)
+    print(checksum, configuration.repeat_types)
     download_and_extract(
         annotations_directory,
         f"{assembly}.hits",
@@ -92,13 +93,19 @@ def retrieve_annotation(assembly: str):
         checksum,
     )
 
-    wanted = extract_lines(f"{annotations_directory}/{assembly}.hits", repeat_families)
+    wanted = extract_lines(
+        f"{annotations_directory}/{assembly}.hits",
+        repeat_families,
+        configuration.repeat_types,
+    )
     for chromosome, _ in chr_length.items():
         data = list(filter(lambda x: x.chromosome == chromosome, wanted))
         save_annotations(annotations_directory, assembly, chromosome, data)
 
 
-def extract_lines(assembly_fasta_path: str, repeat_families: dict):
+def extract_lines(
+    assembly_fasta_path: str, repeat_families: dict, repeat_types: List[str]
+):
     """match the information of web with the hits files
 
     Args:
@@ -108,23 +115,30 @@ def extract_lines(assembly_fasta_path: str, repeat_families: dict):
     """
     print("Generating label datasets \U0001F43C\U0001F43E\U0001F43E")
     wanted = []
-    num_skipped_repeats = 0
-    with open(assembly_fasta_path, "r") as file:
-        reader = csv.reader(file, delimiter="\t")
-        for data in reader:
-            accession = data[1]
-            if not data[2].startswith("LTR"):
-                continue
-            subtype = repeat_families[accession]["classification"]
-            ali_start, ali_end = int(data[9]), int(data[10])
-            wanted.append(
-                AnnotationInfo(
-                    chromosome=data[0],
-                    subtype=subtype,
-                    start=ali_start,
-                    end=ali_end,
-                )
+    hits_pd = hits_to_dataframe(assembly_fasta_path)
+    for _, row in hits_pd.iterrows():
+        accession = row["family_acc"]
+        if accession == "DF0000001":
+            continue
+        repeat_type_name = repeat_families[accession]["repeat_type_name"]
+        if not any(
+            map(lambda repeat_type: repeat_type == repeat_type_name, repeat_types)
+        ):
+            continue
+        subtype = repeat_families[accession]["repeat_type_name"]
+        if "repeat_subtype_name" in repeat_families[accession]:
+            subtype = repeat_families[accession]["repeat_subtype_name"]
+        classification = repeat_families[accession]["classification"]
+        ali_start, ali_end = row["ali-st"], row["ali-en"]
+        wanted.append(
+            AnnotationInfo(
+                chromosome=row["seq_name"],
+                subtype=subtype,
+                classification=classification,
+                start=ali_start,
+                end=ali_end,
             )
+        )
 
     return wanted
 

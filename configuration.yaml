@@ -9,12 +9,14 @@ experiment_prefix: standard
 
 # dataset
 ################################################################################
-#chromosomes: ['chr1', 'chr2', 'chrX']
-chromosomes: ['chr10']
+chromosomes: ['chr1']
+dataset_id: hg38
+#chromosomes: ['chr10']
 segment_length: 2000
 overlap: 500
-num_classes: 5 
-num_queries: 10      
+num_queries: 10
+#repeat_types: ["LTR", "DNA", "LINE", "SINE", "RC", "Retroposon", "PLE", "Satellite", "tRNA", "snRNA", "rRNA", "scRNA"]
+repeat_types: ["DNA"]
 ################################################################################
 
 # features
@@ -29,14 +31,20 @@ iou_threshold: 0.5
 # network architecture
 ################################################################################
 ################################################################################
-
+embedding_dimension: 32
+nhead: 8
 # training
 ################################################################################
 lr: 0.0001
-epochs: 300
+max_epochs: 300
 batch_size: 2
-validation_split: 0.2 
+validation_ratio: 0.1
+test_ratio: 0.1
 max_norm: 0
 seed: 42
 dropout: 0.3
+gpus: 1
+loss_delta: 0
+patience: 5
+profiler: pytorch
 ################################################################################
