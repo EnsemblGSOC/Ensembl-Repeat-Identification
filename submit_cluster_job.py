@@ -57,7 +57,9 @@ def main():
             configuration = yaml.safe_load(file)
         configuration = AttributeDict(configuration)
 
-        experiment_name = f"{configuration.experiment_prefix}_{datetime}"
+        experiment_name = (
+            f"{configuration.experiment_prefix}_{configuration.dataset_id}_{datetime}"
+        )
 
         experiments_directory = configuration.save_directory
 
@@ -71,7 +73,8 @@ def main():
 
         pipeline_command_elements = [
             f"python {pipeline_path}",
-            # f"--configuration {configuration_copy}",
+            f"--datetime {datetime}",
+            f"--configuration {configuration_copy}",
         ]
 
     # no task specified
