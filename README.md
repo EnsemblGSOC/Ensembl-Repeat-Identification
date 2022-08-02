@@ -18,5 +18,5 @@ poetry install
 python generate_dataset.py --species
 
 # e.g.
-python generate_dataset.py --species hg38
+python generate_dataset.py --species hg38 --configuration configuration.yaml
 ```

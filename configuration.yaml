@@ -14,8 +14,9 @@ dataset_id: hg38
 #chromosomes: ['chr10']
 segment_length: 2000
 overlap: 500
-num_classes: 5 
 num_queries: 10
+#repeat_types: ["LTR", "DNA", "LINE", "SINE", "RC", "Retroposon", "PLE", "Satellite", "tRNA", "snRNA", "rRNA", "scRNA"]
+repeat_types: ["DNA"]
 ################################################################################
 
 # features

@@ -17,7 +17,6 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from tqdm import tqdm
 
 # project
-from config import repeat_class_IDs
 from utils import data_directory
 
 
@@ -65,6 +64,54 @@ class DnaSequenceMapper:
         return label_encoded_sequence
 
 
+class CategoryMapper:
+    """
+    Categorical data mapping class, with methods to translate from the category
+    text labels to one-hot encoding and vice versa.
+    """
+
+    def __init__(self, categories):
+        self.categories = sorted(categories)
+        self.num_categories = len(self.categories)
+        self.label_to_index_dict = {
+            label: index for index, label in enumerate(categories)
+        }
+        self.index_to_label_dict = {
+            index: label for index, label in enumerate(categories)
+        }
+
+    def label_to_index(self, label):
+        """
+        Get the class index of label.
+        """
+        return self.label_to_index_dict[label]
+
+    def index_to_label(self, index):
+        """
+        Get the label string from its class index.
+        """
+        return self.index_to_label_dict[index]
+
+    def label_to_one_hot(self, label):
+        """
+        Get the one-hot representation of label.
+        """
+        one_hot_label = F.one_hot(
+            torch.tensor(self.label_to_index_dict[label]),
+            num_classes=self.num_categories,
+        )
+        one_hot_label = one_hot_label.type(torch.float32)
+        return one_hot_label
+
+    def one_hot_to_label(self, one_hot_label):
+        """
+        Get the label string from its one-hot representation.
+        """
+        index = torch.argmax(one_hot_label)
+        label = self.index_to_label_dict[index]
+        return label
+
+
 class RepeatSequenceDataset(Dataset):
     def __init__(
         self,
@@ -89,6 +136,17 @@ class RepeatSequenceDataset(Dataset):
         self.segment_length = segment_length
         self.overlap = overlap
         self.repeat_list = self.select_chr()
+
+        category = self.get_unique_category()
+        print(len(category), category)
+        self.category_mapper = CategoryMapper(category)
+
+    def get_unique_category(self):
+        df_list = [
+            pd.read_csv(annotation_path, sep="\t", names=["start", "end", "subtype"])
+            for annotation_path in self.annotation
+        ]
+        return sorted(pd.concat(df_list)["subtype"].unique().tolist())
 
     def select_chr(self):
         repeat_list = []
@@ -178,7 +236,9 @@ class RepeatSequenceDataset(Dataset):
 
         sample = {"sequence": sequence, "start": start}
 
-        repeat_ids_series = repeats_in_sequence["subtype"].map(repeat_class_IDs)
+        repeat_ids_series = repeats_in_sequence["subtype"].map(
+            self.category_mapper.label_to_index
+        )
         repeat_ids_array = np.array(repeat_ids_series, np.int32)
         repeat_ids_tensor = torch.tensor(repeat_ids_array, dtype=torch.long)
 
@@ -223,6 +283,7 @@ def build_dataloader(configuration):
             ]
         ),
     )
+    configuration.num_classes = dataset.category_mapper.num_categories
     configuration.dna_sequence_mapper = dataset.dna_sequence_mapper
     configuration.num_nucleobase_letters = (
         configuration.dna_sequence_mapper.num_nucleobase_letters
@@ -265,12 +326,14 @@ def build_dataloader(configuration):
 
 class SampleMapEncode:
     def __init__(self, mapper):
-        self.mapper = mapper
+        self.sequence_mapper = mapper
 
     def __call__(self, item):
         # [n, 2]
         sample, target_df = item
-        sample["sequence"] = self.mapper.sequence_to_label_encoding(sample["sequence"])
+        sample["sequence"] = self.sequence_mapper.sequence_to_label_encoding(
+            sample["sequence"]
+        )
         return (sample, target_df)
 
 
