@@ -1,6 +1,7 @@
 # standard library
 import math
 from typing import List
+import time
 
 # third party
 import torch
@@ -302,6 +303,11 @@ class DETR(pl.LightningModule):
 
         return val_losses
 
+    def on_test_start(self):
+        self.sample_sequence = torch.empty(0).to(self.device)
+        self.sample_labels = []
+        self.sample_predictions = []
+
     def test_step(self, batch, batch_idx):
         samples, seq_starts, targets = batch
         outputs = self.forward(samples, seq_starts)
@@ -320,7 +326,26 @@ class DETR(pl.LightningModule):
         self.log("test_loss", test_losses, batch_size=self.configuration.batch_size)
         self.log("mAP", mAP, batch_size=self.configuration.batch_size)
 
-        return test_losses
+        self.sample_sequence = torch.cat((self.sample_sequence, samples))
+        self.sample_labels.append(targets)
+        self.sample_predictions.append(outputs)
+
+    def on_test_end(self):
+        if self.num_sample_predictions > 0:
+            with torch.random.fork_rng():
+                torch.manual_seed(int(time.time() * 1000))
+                permutation = torch.randperm(len(self.sample_sequence))
+        self.sample_sequence = self.sample_sequence[
+            permutation[0 : self.num_sample_predictions]
+        ].tolist()
+
+        sequences = [
+            self.configuration.dna_sequence_mapper.label_encoding_to_sequence(seq)
+            for seq in self.sample_sequence
+        ]
+        print("\nsample assignments")
+        for seq in sequences:
+            print(seq)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.configuration.lr)

@@ -63,6 +63,10 @@ class DnaSequenceMapper:
 
         return label_encoded_sequence
 
+    def label_encoding_to_sequence(self, label_encoded_sequence):
+        sequence = [self.p[label] for label in label_encoded_sequence]
+        return "".join(sequence)
+
 
 class CategoryMapper:
     """
