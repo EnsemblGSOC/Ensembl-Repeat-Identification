@@ -17,6 +17,7 @@ overlap: 500
 num_queries: 10
 #repeat_types: ["LTR", "DNA", "LINE", "SINE", "RC", "Retroposon", "PLE", "Satellite", "tRNA", "snRNA", "rRNA", "scRNA"]
 repeat_types: ["DNA"]
+#dataset_size: 10
 ################################################################################
 
 # features
@@ -47,4 +48,5 @@ gpus: 1
 loss_delta: 0
 patience: 5
 profiler: pytorch
+num_sample_predictions: 5
 ################################################################################
