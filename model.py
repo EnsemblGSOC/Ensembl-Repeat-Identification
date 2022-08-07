@@ -15,6 +15,7 @@ from matcher_segment import build_matcher, segment_IOU
 from transformer import Transformer
 from mAP_validation import mean_average_precision
 from dataloader import DeNormalizeCoordinates, TranslateCoordinatesReverse
+from utils import logger
 
 
 class MLP(nn.Module):
@@ -383,11 +384,11 @@ class DETR(pl.LightningModule):
             self.predicted_sequence(sequence, predict)
             for sequence, predict in zip(sequences, self.sample_predictions)
         ]
-        print("\nsample assignments")
+        logger.info("\nsample assignments")
         for label, predict in zip(result, predict_result):
-            print(label)
-            print("-------------------------------------------------------")
-            print(predict)
+            logger.info(label)
+            logger.info("-------------------------------------------------------")
+            logger.info(predict)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.configuration.lr)
