@@ -1,17 +1,21 @@
 # standard library
 import math
 from typing import List
+import time
 
 # third party
 import torch
 import torch.nn.functional as F
 from torch import nn, Tensor
 import pytorch_lightning as pl
+import numpy as np
 
 # project
 from matcher_segment import build_matcher, segment_IOU
 from transformer import Transformer
 from mAP_validation import mean_average_precision
+from dataloader import DeNormalizeCoordinates, TranslateCoordinatesReverse
+from utils import logger
 
 
 class MLP(nn.Module):
@@ -233,6 +237,10 @@ class DETR(pl.LightningModule):
         self.pe = PositionalEncoding(hidden_dim)
         self.criterion = criterion
         self.configuration = configuration
+        self.translate_back = TranslateCoordinatesReverse()
+        self.denormalize_coordinates = DeNormalizeCoordinates(
+            self.configuration.segment_length
+        )
 
     def forward(self, sample: Tensor, seq_starts: List[int]):
         """
@@ -302,6 +310,11 @@ class DETR(pl.LightningModule):
 
         return val_losses
 
+    def on_test_start(self):
+        self.sample_sequence = torch.empty(0).to(self.device)
+        self.sample_labels = []
+        self.sample_predictions = []
+
     def test_step(self, batch, batch_idx):
         samples, seq_starts, targets = batch
         outputs = self.forward(samples, seq_starts)
@@ -320,7 +333,62 @@ class DETR(pl.LightningModule):
         self.log("test_loss", test_losses, batch_size=self.configuration.batch_size)
         self.log("mAP", mAP, batch_size=self.configuration.batch_size)
 
-        return test_losses
+        self.sample_sequence = torch.cat((self.sample_sequence, samples))
+        self.sample_labels.append(targets[0])
+        self.sample_predictions.append(outputs)
+
+    def labeled_sequence(self, sequence, labels):
+        sequence_classes = labels["classes"]
+        sequence_coordinates = labels["coordinates"]
+        sequence_annoted = np.array(list(sequence))
+        for seq_class, seq_corrds in zip(sequence_classes, sequence_coordinates):
+            seq_class = torch.argmax(seq_class, axis=0)
+            seq_corrds = self.denormalize_coordinates(self.translate_back(seq_corrds))
+
+            sequence_annoted[seq_corrds[0] : seq_corrds[1]] = (str(seq_class.item()),)
+        return "".join(sequence_annoted)
+
+    def predicted_sequence(self, sequence, predicts):
+        sequence_classes = predicts["pred_logits"][0]
+        sequence_coordinates = predicts["pred_boundaries"][0]
+        sequence_annoted = np.array(list(sequence))
+        for seq_class, seq_corrds in zip(sequence_classes, sequence_coordinates):
+            seq_class = torch.argmax(seq_class, axis=0)
+            seq_corrds = self.denormalize_coordinates(self.translate_back(seq_corrds))
+            sequence_annoted[
+                max(0, seq_corrds[0]) : min(
+                    seq_corrds[1], self.configuration.segment_length
+                )
+            ] = (str(seq_class.item()),)
+        return "".join(sequence_annoted)
+
+    def on_test_end(self):
+        if self.configuration.num_sample_predictions > 0:
+            with torch.random.fork_rng():
+                torch.manual_seed(int(time.time() * 1000))
+                permutation = torch.randperm(len(self.sample_sequence))
+        self.sample_sequence = self.sample_sequence[
+            permutation[0 : self.configuration.num_sample_predictions]
+        ].tolist()
+
+        sequences = [
+            self.configuration.dna_sequence_mapper.label_encoding_to_sequence(seq)
+            for seq in self.sample_sequence
+        ]
+        result = [
+            self.labeled_sequence(sequence, sample_label)
+            for sequence, sample_label in zip(sequences, self.sample_labels)
+        ]
+
+        predict_result = [
+            self.predicted_sequence(sequence, predict)
+            for sequence, predict in zip(sequences, self.sample_predictions)
+        ]
+        logger.info("\nsample assignments")
+        for label, predict in zip(result, predict_result):
+            logger.info(label)
+            logger.info("-------------------------------------------------------")
+            logger.info(predict)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.configuration.lr)
@@ -353,7 +421,6 @@ def test_criterion():
         num_classes, matcher=matcher, eos_coef=1, losses=losses, weight_dict=a_dict
     )
     res = criterion(outputs, targets)
-    print(torch.argmax(outputs["pred_logits"], axis=2).shape)
 
 
 def build_model(configuration):

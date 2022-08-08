@@ -63,6 +63,40 @@ class DnaSequenceMapper:
 
         return label_encoded_sequence
 
+    def label_encoding_to_sequence(self, label_encoded_sequence):
+        sequence = [
+            self.index_to_nucleobase_letter[label] for label in label_encoded_sequence
+        ]
+        return "".join(sequence)
+
+
+class TranslateCoordinatesReverse:
+    """Convert (center, span) relative coordinates to (start, end)."""
+
+    def __init__(self):
+        pass
+
+    def __call__(self, target):
+        # [n, 2]
+        span, center = target[0], target[1]
+        end = (span + 2 * center) / 2
+        start = (span - 2 * center) / 2
+        return (start, end)
+
+
+class DeNormalizeCoordinates:
+    """DeNormalize a sample's repeat annotation coordinates to a relative location
+    in the sequence, defined as start and end floats between 0 and 1."""
+
+    def __init__(self, segment_length):
+        self.segment_length = segment_length
+
+    def __call__(self, coordinates):
+        return (
+            int(coordinates[0].item() * self.segment_length),
+            int(coordinates[1].item() * self.segment_length),
+        )
+
 
 class CategoryMapper:
     """
@@ -289,6 +323,8 @@ def build_dataloader(configuration):
         configuration.dna_sequence_mapper.num_nucleobase_letters
     )
     dataset_size = len(dataset)
+    if hasattr(configuration, "dataset_size"):
+        dataset_size = min(dataset_size, configuration.dataset_size)
     indices = list(range(dataset_size))
     validation_size = int(configuration.validation_ratio * dataset_size)
     test_size = int(configuration.test_ratio * dataset_size)
@@ -297,7 +333,7 @@ def build_dataloader(configuration):
     val_indices, test_indices, train_indices = (
         indices[:validation_size],
         indices[validation_size : validation_size + test_size],
-        indices[validation_size + test_size :],
+        indices[validation_size + test_size : dataset_size],
     )
 
     train_sampler = SubsetRandomSampler(train_indices)

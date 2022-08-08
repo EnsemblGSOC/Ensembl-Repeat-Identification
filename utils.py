@@ -3,7 +3,8 @@ import gzip
 import hashlib
 import pathlib
 import shutil
-
+import logging
+import sys
 from typing import Union
 
 # third party
@@ -140,3 +141,21 @@ def hits_to_dataframe(hits_path: Union[pathlib.Path, str]) -> pd.DataFrame:
     hits = hits.astype(hits_column_dtypes)
 
     return hits
+
+
+# logging formats
+logging_formatter_time_message = logging.Formatter(
+    fmt="%(asctime)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logging_formatter_message = logging.Formatter(fmt="%(message)s")
+
+# set up base logger
+logger = logging.getLogger("main_logger")
+logger.setLevel(logging.DEBUG)
+logger.propagate = False
+# create console handler and add to logger
+console_handler = logging.StreamHandler(sys.stderr)
+console_handler.setLevel(logging.DEBUG)
+console_handler.setFormatter(logging_formatter_time_message)
+logger.addHandler(console_handler)
