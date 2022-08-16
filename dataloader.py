@@ -287,9 +287,7 @@ class RepeatSequenceDataset(Dataset):
         return (sample, target)
 
     def seq2seq(self, index):
-        sample, start, repeats_in_sequence = self.repeat_list[index]
-        sample = self.dna_sequence_mapper.sequence_to_label_encoding(sample)
-        print(sample)
+        sequence, start, repeats_in_sequence = self.repeat_list[index]
         end = start + self.segment_length
 
         repeat_ids_series = repeats_in_sequence["subtype"].map(
@@ -298,12 +296,17 @@ class RepeatSequenceDataset(Dataset):
         repeat_ids_array = np.array(repeat_ids_series, np.int32)
         repeat_ids_tensor = torch.tensor(repeat_ids_array, dtype=torch.long)
 
+        sample = {"sequence": sequence, "start": start}
+
         coordinates = repeats_in_sequence[["start", "end"]]
-        print(coordinates)
+        sample, coordinates = self.transform((sample, coordinates))
+        sample = sample["sequence"]
         target = sample.clone().detach()
         for coord, c in zip(coordinates, repeat_ids_array):
-            print(coord)
-            target[coord[0] : coord[1]] = c.item()
+            start = int(coord[0].item())
+            end = int(coord[1].item())
+            repeat_cls = c.item() + self.dna_sequence_mapper.num_nucleobase_letters
+            target[start:end] = repeat_cls
         return sample, target
 
     def __getitem__(self, index):
@@ -389,6 +392,13 @@ def build_seq2seq_dataset(configuration):
         segment_length=configuration.segment_length,
         overlap=configuration.overlap,
         dna_sequence_mapper=dna_sequence_mapper,
+        transform=transforms.Compose(
+            [
+                SampleMapEncode(dna_sequence_mapper),
+                CoordinatesToTensor(),
+                ZeroStartCoordinates(),
+            ]
+        ),
     )
     configuration.num_classes = dataset.category_mapper.num_categories
     configuration.dna_sequence_mapper = dataset.dna_sequence_mapper
@@ -480,7 +490,6 @@ class ZeroStartCoordinates:
 
     def __call__(self, item):
         sample, coordinates = item
-        length = len(sample["sequence"])
         start_coordinate = sample["start"]
         coordinates[:, :] -= start_coordinate
         return (sample, coordinates)

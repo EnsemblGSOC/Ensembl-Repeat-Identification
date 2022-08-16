@@ -395,6 +395,24 @@ class DETR(pl.LightningModule):
         return optimizer
 
 
+def build_detr_model(configuration):
+    transformer = Transformer(
+        d_model=configuration.embedding_dimension,
+        nhead=configuration.nhead,
+        dropout=configuration.dropout,
+    )
+    criterion = build_criterion(configuration)
+    model = DETR(
+        transformer,
+        num_classes=configuration.num_classes,
+        num_queries=configuration.num_queries,
+        num_nucleobase_letters=configuration.num_nucleobase_letters,
+        criterion=criterion,
+        configuration=configuration,
+    )
+    return model
+
+
 def test_criterion():
     batch_size, num_queries, num_classes = 2, 10, 3
 
