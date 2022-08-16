@@ -286,8 +286,28 @@ class RepeatSequenceDataset(Dataset):
         }
         return (sample, target)
 
+    def seq2seq(self, index):
+        sample, start, repeats_in_sequence = self.repeat_list[index]
+        sample = self.dna_sequence_mapper.sequence_to_label_encoding(sample)
+        print(sample)
+        end = start + self.segment_length
+
+        repeat_ids_series = repeats_in_sequence["subtype"].map(
+            self.category_mapper.label_to_index
+        )
+        repeat_ids_array = np.array(repeat_ids_series, np.int32)
+        repeat_ids_tensor = torch.tensor(repeat_ids_array, dtype=torch.long)
+
+        coordinates = repeats_in_sequence[["start", "end"]]
+        print(coordinates)
+        target = sample.clone().detach()
+        for coord, c in zip(coordinates, repeat_ids_array):
+            print(coord)
+            target[coord[0] : coord[1]] = c.item()
+        return sample, target
+
     def __getitem__(self, index):
-        return self.forward_strand(index)
+        return self.seq2seq(index)
 
     def __len__(self):
         return len(self.repeat_list)
@@ -360,6 +380,56 @@ def build_dataloader(configuration):
     return train_loader, validation_loader, test_loader
 
 
+def build_seq2seq_dataset(configuration):
+    dna_sequence_mapper = DnaSequenceMapper()
+    dataset = RepeatSequenceDataset(
+        fasta_path="./data/genome_assemblies/datasets",
+        annotations_path="./data/annotations",
+        chromosomes=configuration.chromosomes,
+        segment_length=configuration.segment_length,
+        overlap=configuration.overlap,
+        dna_sequence_mapper=dna_sequence_mapper,
+    )
+    configuration.num_classes = dataset.category_mapper.num_categories
+    configuration.dna_sequence_mapper = dataset.dna_sequence_mapper
+    configuration.num_nucleobase_letters = (
+        configuration.dna_sequence_mapper.num_nucleobase_letters
+    )
+    dataset_size = len(dataset)
+    if hasattr(configuration, "dataset_size"):
+        dataset_size = min(dataset_size, configuration.dataset_size)
+    indices = list(range(dataset_size))
+    validation_size = int(configuration.validation_ratio * dataset_size)
+    test_size = int(configuration.test_ratio * dataset_size)
+    np.random.seed(configuration.seed)
+    np.random.shuffle(indices)
+    val_indices, test_indices, train_indices = (
+        indices[:validation_size],
+        indices[validation_size : validation_size + test_size],
+        indices[validation_size + test_size : dataset_size],
+    )
+
+    train_sampler = SubsetRandomSampler(train_indices)
+    valid_sampler = SubsetRandomSampler(val_indices)
+    test_sampler = SubsetRandomSampler(test_indices)
+    train_loader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=configuration.batch_size,
+        sampler=train_sampler,
+    )
+    validation_loader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=configuration.batch_size,
+        sampler=valid_sampler,
+    )
+    test_loader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=configuration.batch_size,
+        sampler=test_sampler,
+    )
+    return train_loader, validation_loader, test_loader
+
+
 class SampleMapEncode:
     def __init__(self, mapper):
         self.sequence_mapper = mapper
@@ -398,6 +468,21 @@ class NormalizeCoordinates:
         start_coordinate = sample["start"]
         coordinates[:, :] -= start_coordinate
         coordinates[:, :] /= length
+        return (sample, coordinates)
+
+
+class ZeroStartCoordinates:
+    """Normalize a sample's repeat annotation coordinates to a relative location
+    in the sequence, defined as start and end floats between 0 and 1."""
+
+    def __init__(self):
+        pass
+
+    def __call__(self, item):
+        sample, coordinates = item
+        length = len(sample["sequence"])
+        start_coordinate = sample["start"]
+        coordinates[:, :] -= start_coordinate
         return (sample, coordinates)
 
 

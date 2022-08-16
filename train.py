@@ -18,7 +18,7 @@ import yaml
 import pytorch_lightning as pl
 
 # project
-from dataloader import build_dataloader
+from dataloader import build_dataloader, build_seq2seq_dataset
 from model import DETR, build_criterion
 from transformer import Transformer
 
@@ -61,56 +61,57 @@ def main():
     np.random.seed(seed)
     random.seed(seed)
 
-    training_dataloader, validation_dataloader, test_dataloader = build_dataloader(
+    training_dataloader, validation_dataloader, test_dataloader = build_seq2seq_dataset(
         configuration
     )
+    for data in training_dataloader:
+        print(data)
+    # transformer = Transformer(
+    #     d_model=configuration.embedding_dimension,
+    #     nhead=configuration.nhead,
+    #     dropout=configuration.dropout,
+    # )
 
-    transformer = Transformer(
-        d_model=configuration.embedding_dimension,
-        nhead=configuration.nhead,
-        dropout=configuration.dropout,
-    )
+    # criterion = build_criterion(configuration)
+    # model = DETR(
+    #     transformer,
+    #     num_classes=configuration.num_classes,
+    #     num_queries=configuration.num_queries,
+    #     num_nucleobase_letters=configuration.num_nucleobase_letters,
+    #     criterion=criterion,
+    #     configuration=configuration,
+    # )
 
-    criterion = build_criterion(configuration)
-    model = DETR(
-        transformer,
-        num_classes=configuration.num_classes,
-        num_queries=configuration.num_queries,
-        num_nucleobase_letters=configuration.num_nucleobase_letters,
-        criterion=criterion,
-        configuration=configuration,
-    )
+    # configuration.logging_version = f"{configuration.experiment_prefix}_{configuration.dataset_id}_{configuration.datetime}"
 
-    configuration.logging_version = f"{configuration.experiment_prefix}_{configuration.dataset_id}_{configuration.datetime}"
+    # tensorboard_logger = pl.loggers.TensorBoardLogger(
+    #     save_dir=configuration.save_directory,
+    #     name="",
+    #     version=configuration.logging_version,
+    #     default_hp_metric=False,
+    # )
+    # early_stopping_callback = pl.callbacks.early_stopping.EarlyStopping(
+    #     monitor="val_losses",
+    #     min_delta=configuration.loss_delta,
+    #     patience=configuration.patience,
+    #     verbose=True,
+    # )
 
-    tensorboard_logger = pl.loggers.TensorBoardLogger(
-        save_dir=configuration.save_directory,
-        name="",
-        version=configuration.logging_version,
-        default_hp_metric=False,
-    )
-    early_stopping_callback = pl.callbacks.early_stopping.EarlyStopping(
-        monitor="val_losses",
-        min_delta=configuration.loss_delta,
-        patience=configuration.patience,
-        verbose=True,
-    )
+    # trainer = pl.Trainer(
+    #     gpus=configuration.gpus,
+    #     logger=tensorboard_logger,
+    #     max_epochs=configuration.max_epochs,
+    #     callbacks=[early_stopping_callback],
+    #     log_every_n_steps=1,
+    #     profiler=configuration.profiler,
+    # )
 
-    trainer = pl.Trainer(
-        gpus=configuration.gpus,
-        logger=tensorboard_logger,
-        max_epochs=configuration.max_epochs,
-        callbacks=[early_stopping_callback],
-        log_every_n_steps=1,
-        profiler=configuration.profiler,
-    )
-
-    trainer.fit(
-        model=model,
-        train_dataloaders=training_dataloader,
-        val_dataloaders=validation_dataloader,
-    )
-    trainer.test(ckpt_path="best", dataloaders=test_dataloader)
+    # trainer.fit(
+    #     model=model,
+    #     train_dataloaders=training_dataloader,
+    #     val_dataloaders=validation_dataloader,
+    # )
+    # trainer.test(ckpt_path="best", dataloaders=test_dataloader)
 
 
 if __name__ == "__main__":

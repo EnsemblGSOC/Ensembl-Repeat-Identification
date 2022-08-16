@@ -9,7 +9,7 @@ experiment_prefix: standard
 
 # dataset
 ################################################################################
-chromosomes: ['chr1', 'chr2', 'chr3']
+chromosomes: ['chr1']
 dataset_id: hg38
 #chromosomes: ['chr10']
 segment_length: 2000
@@ -17,7 +17,7 @@ overlap: 500
 num_queries: 10
 #repeat_types: ["LTR", "DNA", "LINE", "SINE", "RC", "Retroposon", "PLE", "Satellite", "tRNA", "snRNA", "rRNA", "scRNA"]
 repeat_types: ["DNA"]
-#dataset_size: 10
+dataset_size: 10
 ################################################################################
 
 # features
