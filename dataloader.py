@@ -307,6 +307,14 @@ class RepeatSequenceDataset(Dataset):
             end = int(coord[1].item())
             repeat_cls = c.item() + self.dna_sequence_mapper.num_nucleobase_letters
             target[start:end] = repeat_cls
+        # <sos> target <eos>
+        sos = (
+            self.category_mapper.num_categories
+            + self.dna_sequence_mapper.num_nucleobase_letters
+            + 1
+        )
+        eos = sos + 1
+        target = torch.cat((torch.tensor([sos]), target, torch.tensor([eos])))
         return sample, target
 
     def __getitem__(self, index):

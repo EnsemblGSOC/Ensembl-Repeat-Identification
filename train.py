@@ -20,6 +20,7 @@ import pytorch_lightning as pl
 # project
 from dataloader import build_dataloader, build_seq2seq_dataset
 from model import DETR, build_criterion
+from seq2seq import Seq2SeqTransformer
 from transformer import Transformer
 
 
@@ -64,7 +65,17 @@ def main():
     training_dataloader, validation_dataloader, test_dataloader = build_seq2seq_dataset(
         configuration
     )
-
+    model = Seq2SeqTransformer(
+        num_encoder_layers=configuration.num_encoder_layers,
+        num_decoder_layers=configuration.num_decoder_layers,
+        emb_size=configuration.embedding_dimension,
+        nhead=configuration.nhead,
+        src_vocab_size=configuration.num_nucleobase_letters,
+        tgt_vocab_size=configuration.num_nucleobase_letters
+        + configuration.num_classes
+        + 2,
+        configuration=configuration,
+    )
     configuration.logging_version = f"{configuration.experiment_prefix}_{configuration.dataset_id}_{configuration.datetime}"
 
     tensorboard_logger = pl.loggers.TensorBoardLogger(
