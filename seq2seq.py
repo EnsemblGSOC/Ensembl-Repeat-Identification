@@ -137,7 +137,31 @@ class Seq2SeqTransformer(pl.LightningModule):
         logits = self.forward(samples, tar_input, src_mask, tgt_mask)
         loss_fn = torch.nn.CrossEntropyLoss()
         loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tar_output.reshape(-1))
+        self.log("train_loss", loss)
+        return loss
 
+    def test_step(self, batch, batch_idx):
+        samples, targets = batch
+        tar_input = targets[:, :-1]
+        src_mask, tgt_mask = self.create_mask(samples, tar_input)
+        tar_output = targets[:, 1:]
+        logits = self.forward(samples, tar_input, src_mask, tgt_mask)
+        loss_fn = torch.nn.CrossEntropyLoss()
+        loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tar_output.reshape(-1))
+
+        self.log("test_loss", loss)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        samples, targets = batch
+        tar_input = targets[:, :-1]
+        src_mask, tgt_mask = self.create_mask(samples, tar_input)
+        tar_output = targets[:, 1:]
+        logits = self.forward(samples, tar_input, src_mask, tgt_mask)
+        loss_fn = torch.nn.CrossEntropyLoss()
+        loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tar_output.reshape(-1))
+
+        self.log("validation_loss", loss)
         return loss
 
     def configure_optimizers(self):
