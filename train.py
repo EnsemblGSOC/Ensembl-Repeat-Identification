@@ -73,7 +73,7 @@ def main():
         src_vocab_size=configuration.num_nucleobase_letters,
         tgt_vocab_size=configuration.num_nucleobase_letters
         + configuration.num_classes
-        + 2,
+        + 3,
         configuration=configuration,
     )
     configuration.logging_version = f"{configuration.experiment_prefix}_{configuration.dataset_id}_{configuration.datetime}"
@@ -85,7 +85,7 @@ def main():
         default_hp_metric=False,
     )
     early_stopping_callback = pl.callbacks.early_stopping.EarlyStopping(
-        monitor="val_losses",
+        monitor="validation_loss",
         min_delta=configuration.loss_delta,
         patience=configuration.patience,
         verbose=True,
