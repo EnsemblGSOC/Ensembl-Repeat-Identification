@@ -314,7 +314,13 @@ class RepeatSequenceDataset(Dataset):
             + 1
         )
         eos = sos + 1
-        target = torch.cat((torch.tensor([sos]), target, torch.tensor([eos])))
+        target = torch.cat(
+            (
+                torch.tensor([sos], dtype=torch.long),
+                target,
+                torch.tensor([eos], dtype=torch.long),
+            )
+        )
         return sample, target
 
     def __getitem__(self, index):

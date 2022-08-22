@@ -138,6 +138,44 @@ class Seq2SeqTransformer(pl.LightningModule):
         self.log("train_loss", loss)
         return loss
 
+    def predicted_sequence(self, sequence, predicts):
+        sequence_classes = predicts["pred_logits"][0]
+        sequence_coordinates = predicts["pred_boundaries"][0]
+        sequence_annoted = np.array(list(sequence))
+        for seq_class, seq_corrds in zip(sequence_classes, sequence_coordinates):
+            seq_class = torch.argmax(seq_class, axis=0)
+            seq_corrds = self.denormalize_coordinates(self.translate_back(seq_corrds))
+            sequence_annoted[
+                max(0, seq_corrds[0]) : min(
+                    seq_corrds[1], self.configuration.segment_length
+                )
+            ] = (str(seq_class.item()),)
+        return "".join(sequence_annoted)
+
+    def on_test_start(self):
+        self.targets = torch.empty(0).to(self.device)
+        self.predict_targets = torch.empty(0).to(self.device)
+
+    def on_test_end(self):
+        if self.configuration.num_sample_predictions > 0:
+            with torch.random.fork_rng():
+                torch.manual_seed(int(time.time() * 1000))
+                permutation = torch.randperm(self.targets.shape[0])
+        print(permutation.shape)
+        self.targets = self.targets[
+            permutation[0 : self.configuration.num_sample_predictions], :
+        ].tolist()
+
+        self.predict_targets = self.predict_targets[
+            permutation[0 : self.configuration.num_sample_predictions], :
+        ].tolist()
+
+        logger.info("\nsample assignments")
+        for target, predict in zip(self.targets, self.predict_targets):
+            logger.info("".join(list(map(lambda x: str(int(x)), target))))
+            logger.info("-------------------------------------------------------")
+            logger.info("".join(list(map(lambda x: str(int(x)), predict))))
+
     def test_step(self, batch, batch_idx):
         samples, targets = batch
         tar_input = targets[:, :-1]
@@ -146,8 +184,13 @@ class Seq2SeqTransformer(pl.LightningModule):
         logits = self.forward(samples, tar_input, src_mask, tgt_mask)
         loss_fn = torch.nn.CrossEntropyLoss()
         loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tar_output.reshape(-1))
-
         self.log("test_loss", loss)
+        predict_class = torch.argmax(logits, axis=2)
+        if self.targets.shape[0] > 100:
+            self.targets = self.targets[-100:, :]
+            self.predict_targets = self.predict_targets[-100:, :]
+        self.targets = torch.cat((self.targets, tar_input[:, 1:]))
+        self.predict_targets = torch.cat((self.predict_targets, predict_class[:, :-1]))
         return loss
 
     def validation_step(self, batch, batch_idx):

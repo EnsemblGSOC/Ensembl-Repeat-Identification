@@ -49,6 +49,6 @@ dropout: 0.3
 gpus: 1
 loss_delta: 0
 patience: 5
-profiler: pytorch
+profiler: null
 num_sample_predictions: 5
 ################################################################################
