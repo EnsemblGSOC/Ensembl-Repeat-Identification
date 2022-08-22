@@ -69,6 +69,12 @@ class DnaSequenceMapper:
         ]
         return "".join(sequence)
 
+    def label_encoding_to_nucleobase_letter(self, label):
+        if label in self.index_to_nucleobase_letter.keys():
+            return self.index_to_nucleobase_letter[label]
+        else:
+            return label
+
 
 class TranslateCoordinatesReverse:
     """Convert (center, span) relative coordinates to (start, end)."""

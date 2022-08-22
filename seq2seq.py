@@ -138,20 +138,6 @@ class Seq2SeqTransformer(pl.LightningModule):
         self.log("train_loss", loss)
         return loss
 
-    def predicted_sequence(self, sequence, predicts):
-        sequence_classes = predicts["pred_logits"][0]
-        sequence_coordinates = predicts["pred_boundaries"][0]
-        sequence_annoted = np.array(list(sequence))
-        for seq_class, seq_corrds in zip(sequence_classes, sequence_coordinates):
-            seq_class = torch.argmax(seq_class, axis=0)
-            seq_corrds = self.denormalize_coordinates(self.translate_back(seq_corrds))
-            sequence_annoted[
-                max(0, seq_corrds[0]) : min(
-                    seq_corrds[1], self.configuration.segment_length
-                )
-            ] = (str(seq_class.item()),)
-        return "".join(sequence_annoted)
-
     def on_test_start(self):
         self.targets = torch.empty(0).to(self.device)
         self.predict_targets = torch.empty(0).to(self.device)
@@ -171,10 +157,13 @@ class Seq2SeqTransformer(pl.LightningModule):
         ].tolist()
 
         logger.info("\nsample assignments")
+        transform = (
+            self.configuration.dna_sequence_mapper.label_encoding_to_nucleobase_letter
+        )
         for target, predict in zip(self.targets, self.predict_targets):
-            logger.info("".join(list(map(lambda x: str(int(x)), target))))
+            logger.info("".join(list(map(lambda x: str(transform(int(x))), target))))
             logger.info("-------------------------------------------------------")
-            logger.info("".join(list(map(lambda x: str(int(x)), predict))))
+            logger.info("".join(list(map(lambda x: str(transform(int(x))), predict))))
 
     def test_step(self, batch, batch_idx):
         samples, targets = batch
