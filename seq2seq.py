@@ -156,6 +156,7 @@ class Seq2SeqTransformer(pl.LightningModule):
         ].tolist()
 
         logger.info("\nsample assignments")
+        self.configuration.category_mapper.print_label_and_emoji(logger)
         for target, predict in zip(self.targets, self.predict_targets):
             logger.info(
                 "".join(list(map(lambda x: self.class_transform(int(x)), target)))

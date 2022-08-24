@@ -63,6 +63,8 @@ def main():
 
     experiment_directory = pathlib.Path(f"{experiments_directory}/{experiment_name}")
 
+    experiment_directory.mkdir(parents=True, exist_ok=True)
+
     file_handler = logging.FileHandler(f"{experiment_directory}/test_output.log")
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(logging_formatter_time_message)
@@ -87,7 +89,7 @@ def main():
         src_vocab_size=configuration.num_nucleobase_letters,
         tgt_vocab_size=configuration.num_nucleobase_letters
         + configuration.num_classes
-        + 3,
+        + 2,
         configuration=configuration,
     )
     configuration.logging_version = f"{configuration.experiment_prefix}_{configuration.dataset_id}_{configuration.datetime}"

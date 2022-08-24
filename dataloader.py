@@ -114,7 +114,7 @@ class CategoryMapper:
     def __init__(self, categories):
         self.categories = sorted(categories)
         self.num_categories = len(self.categories)
-        self.emojis = emojis[: self.num_categories + 3]
+        self.emojis = emojis[: self.num_categories + 2]
         self.label_to_index_dict = {
             label: index for index, label in enumerate(categories)
         }
@@ -123,6 +123,11 @@ class CategoryMapper:
         }
         self.index_to_emoji_dict = {
             index: emoji for index, emoji in enumerate(self.emojis)
+        }
+
+        self.label_to_emoji_dict = {
+            label: self.index_to_emoji_dict[index]
+            for index, label in enumerate(categories + ["sos", "eos"])
         }
 
     def label_to_index(self, label):
@@ -158,6 +163,9 @@ class CategoryMapper:
         index = torch.argmax(one_hot_label)
         label = self.index_to_label_dict[index]
         return label
+
+    def print_label_and_emoji(self, logger):
+        logger.info(self.label_to_emoji_dict)
 
 
 class RepeatSequenceDataset(Dataset):
@@ -325,7 +333,6 @@ class RepeatSequenceDataset(Dataset):
         sos = (
             self.category_mapper.num_categories
             + self.dna_sequence_mapper.num_nucleobase_letters
-            + 1
         )
         eos = sos + 1
         target = torch.cat(
