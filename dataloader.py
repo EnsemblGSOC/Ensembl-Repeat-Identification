@@ -18,6 +18,7 @@ from tqdm import tqdm
 
 # project
 from utils import data_directory
+from config import emojis
 
 
 class DnaSequenceMapper:
@@ -113,11 +114,15 @@ class CategoryMapper:
     def __init__(self, categories):
         self.categories = sorted(categories)
         self.num_categories = len(self.categories)
+        self.emojis = emojis[: self.num_categories + 3]
         self.label_to_index_dict = {
             label: index for index, label in enumerate(categories)
         }
         self.index_to_label_dict = {
             index: label for index, label in enumerate(categories)
+        }
+        self.index_to_emoji_dict = {
+            index: emoji for index, emoji in enumerate(self.emojis)
         }
 
     def label_to_index(self, label):
@@ -131,6 +136,9 @@ class CategoryMapper:
         Get the label string from its class index.
         """
         return self.index_to_label_dict[index]
+
+    def label_to_emoji(self, index):
+        return self.index_to_emoji_dict[index]
 
     def label_to_one_hot(self, label):
         """
@@ -422,9 +430,11 @@ def build_seq2seq_dataset(configuration):
     )
     configuration.num_classes = dataset.category_mapper.num_categories
     configuration.dna_sequence_mapper = dataset.dna_sequence_mapper
+    configuration.category_mapper = dataset.category_mapper
     configuration.num_nucleobase_letters = (
         configuration.dna_sequence_mapper.num_nucleobase_letters
     )
+
     dataset_size = len(dataset)
     if hasattr(configuration, "dataset_size"):
         dataset_size = min(dataset_size, configuration.dataset_size)

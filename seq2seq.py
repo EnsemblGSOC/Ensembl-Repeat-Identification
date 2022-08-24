@@ -147,7 +147,6 @@ class Seq2SeqTransformer(pl.LightningModule):
             with torch.random.fork_rng():
                 torch.manual_seed(int(time.time() * 1000))
                 permutation = torch.randperm(self.targets.shape[0])
-        print(permutation.shape)
         self.targets = self.targets[
             permutation[0 : self.configuration.num_sample_predictions], :
         ].tolist()
@@ -157,13 +156,25 @@ class Seq2SeqTransformer(pl.LightningModule):
         ].tolist()
 
         logger.info("\nsample assignments")
-        transform = (
-            self.configuration.dna_sequence_mapper.label_encoding_to_nucleobase_letter
-        )
         for target, predict in zip(self.targets, self.predict_targets):
-            logger.info("".join(list(map(lambda x: str(transform(int(x))), target))))
+            logger.info(
+                "".join(list(map(lambda x: self.class_transform(int(x)), target)))
+            )
             logger.info("-------------------------------------------------------")
-            logger.info("".join(list(map(lambda x: str(transform(int(x))), predict))))
+            logger.info(
+                "".join(list(map(lambda x: self.class_transform(int(x)), predict)))
+            )
+
+    def class_transform(self, label_index):
+        num_nucleobase_letters = (
+            self.configuration.dna_sequence_mapper.num_nucleobase_letters
+        )
+        if label_index < num_nucleobase_letters:
+            return self.configuration.dna_sequence_mapper.label_encoding_to_nucleobase_letter(
+                label_index
+            )
+        label_index -= num_nucleobase_letters
+        return self.configuration.category_mapper.label_to_emoji(label_index)
 
     def test_step(self, batch, batch_idx):
         samples, targets = batch

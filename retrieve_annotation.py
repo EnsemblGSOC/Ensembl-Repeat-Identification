@@ -126,8 +126,8 @@ def extract_lines(
         ):
             continue
         subtype = repeat_families[accession]["repeat_type_name"]
-        if "repeat_subtype_name" in repeat_families[accession]:
-            subtype = repeat_families[accession]["repeat_subtype_name"]
+        # if "repeat_subtype_name" in repeat_families[accession]:
+        #     subtype = repeat_families[accession]["repeat_subtype_name"]
         classification = repeat_families[accession]["classification"]
         ali_start, ali_end = row["ali-st"], row["ali-en"]
         wanted.append(
