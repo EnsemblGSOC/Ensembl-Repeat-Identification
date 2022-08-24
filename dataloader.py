@@ -18,6 +18,7 @@ from tqdm import tqdm
 
 # project
 from utils import data_directory
+from config import emojis
 
 
 class DnaSequenceMapper:
@@ -69,6 +70,12 @@ class DnaSequenceMapper:
         ]
         return "".join(sequence)
 
+    def label_encoding_to_nucleobase_letter(self, label):
+        if label in self.index_to_nucleobase_letter.keys():
+            return self.index_to_nucleobase_letter[label]
+        else:
+            return label
+
 
 class TranslateCoordinatesReverse:
     """Convert (center, span) relative coordinates to (start, end)."""
@@ -107,11 +114,15 @@ class CategoryMapper:
     def __init__(self, categories):
         self.categories = sorted(categories)
         self.num_categories = len(self.categories)
+        self.emojis = emojis[: self.num_categories + 3]
         self.label_to_index_dict = {
             label: index for index, label in enumerate(categories)
         }
         self.index_to_label_dict = {
             index: label for index, label in enumerate(categories)
+        }
+        self.index_to_emoji_dict = {
+            index: emoji for index, emoji in enumerate(self.emojis)
         }
 
     def label_to_index(self, label):
@@ -125,6 +136,9 @@ class CategoryMapper:
         Get the label string from its class index.
         """
         return self.index_to_label_dict[index]
+
+    def label_to_emoji(self, index):
+        return self.index_to_emoji_dict[index]
 
     def label_to_one_hot(self, label):
         """
@@ -286,8 +300,45 @@ class RepeatSequenceDataset(Dataset):
         }
         return (sample, target)
 
+    def seq2seq(self, index):
+        sequence, start, repeats_in_sequence = self.repeat_list[index]
+        end = start + self.segment_length
+
+        repeat_ids_series = repeats_in_sequence["subtype"].map(
+            self.category_mapper.label_to_index
+        )
+        repeat_ids_array = np.array(repeat_ids_series, np.int32)
+        repeat_ids_tensor = torch.tensor(repeat_ids_array, dtype=torch.long)
+
+        sample = {"sequence": sequence, "start": start}
+
+        coordinates = repeats_in_sequence[["start", "end"]]
+        sample, coordinates = self.transform((sample, coordinates))
+        sample = sample["sequence"]
+        target = sample.clone().detach()
+        for coord, c in zip(coordinates, repeat_ids_array):
+            start = int(coord[0].item())
+            end = int(coord[1].item())
+            repeat_cls = c.item() + self.dna_sequence_mapper.num_nucleobase_letters
+            target[start:end] = repeat_cls
+        # <sos> target <eos>
+        sos = (
+            self.category_mapper.num_categories
+            + self.dna_sequence_mapper.num_nucleobase_letters
+            + 1
+        )
+        eos = sos + 1
+        target = torch.cat(
+            (
+                torch.tensor([sos], dtype=torch.long),
+                target,
+                torch.tensor([eos], dtype=torch.long),
+            )
+        )
+        return sample, target
+
     def __getitem__(self, index):
-        return self.forward_strand(index)
+        return self.seq2seq(index)
 
     def __len__(self):
         return len(self.repeat_list)
@@ -360,6 +411,65 @@ def build_dataloader(configuration):
     return train_loader, validation_loader, test_loader
 
 
+def build_seq2seq_dataset(configuration):
+    dna_sequence_mapper = DnaSequenceMapper()
+    dataset = RepeatSequenceDataset(
+        fasta_path="./data/genome_assemblies/datasets",
+        annotations_path="./data/annotations",
+        chromosomes=configuration.chromosomes,
+        segment_length=configuration.segment_length,
+        overlap=configuration.overlap,
+        dna_sequence_mapper=dna_sequence_mapper,
+        transform=transforms.Compose(
+            [
+                SampleMapEncode(dna_sequence_mapper),
+                CoordinatesToTensor(),
+                ZeroStartCoordinates(),
+            ]
+        ),
+    )
+    configuration.num_classes = dataset.category_mapper.num_categories
+    configuration.dna_sequence_mapper = dataset.dna_sequence_mapper
+    configuration.category_mapper = dataset.category_mapper
+    configuration.num_nucleobase_letters = (
+        configuration.dna_sequence_mapper.num_nucleobase_letters
+    )
+
+    dataset_size = len(dataset)
+    if hasattr(configuration, "dataset_size"):
+        dataset_size = min(dataset_size, configuration.dataset_size)
+    indices = list(range(dataset_size))
+    validation_size = int(configuration.validation_ratio * dataset_size)
+    test_size = int(configuration.test_ratio * dataset_size)
+    np.random.seed(configuration.seed)
+    np.random.shuffle(indices)
+    val_indices, test_indices, train_indices = (
+        indices[:validation_size],
+        indices[validation_size : validation_size + test_size],
+        indices[validation_size + test_size : dataset_size],
+    )
+
+    train_sampler = SubsetRandomSampler(train_indices)
+    valid_sampler = SubsetRandomSampler(val_indices)
+    test_sampler = SubsetRandomSampler(test_indices)
+    train_loader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=configuration.batch_size,
+        sampler=train_sampler,
+    )
+    validation_loader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=configuration.batch_size,
+        sampler=valid_sampler,
+    )
+    test_loader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=configuration.batch_size,
+        sampler=test_sampler,
+    )
+    return train_loader, validation_loader, test_loader
+
+
 class SampleMapEncode:
     def __init__(self, mapper):
         self.sequence_mapper = mapper
@@ -398,6 +508,20 @@ class NormalizeCoordinates:
         start_coordinate = sample["start"]
         coordinates[:, :] -= start_coordinate
         coordinates[:, :] /= length
+        return (sample, coordinates)
+
+
+class ZeroStartCoordinates:
+    """Normalize a sample's repeat annotation coordinates to a relative location
+    in the sequence, defined as start and end floats between 0 and 1."""
+
+    def __init__(self):
+        pass
+
+    def __call__(self, item):
+        sample, coordinates = item
+        start_coordinate = sample["start"]
+        coordinates[:, :] -= start_coordinate
         return (sample, coordinates)
 
 

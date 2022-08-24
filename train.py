@@ -18,8 +18,9 @@ import yaml
 import pytorch_lightning as pl
 
 # project
-from dataloader import build_dataloader
+from dataloader import build_dataloader, build_seq2seq_dataset
 from model import DETR, build_criterion
+from seq2seq import Seq2SeqTransformer
 from transformer import Transformer
 
 
@@ -61,26 +62,20 @@ def main():
     np.random.seed(seed)
     random.seed(seed)
 
-    training_dataloader, validation_dataloader, test_dataloader = build_dataloader(
+    training_dataloader, validation_dataloader, test_dataloader = build_seq2seq_dataset(
         configuration
     )
-
-    transformer = Transformer(
-        d_model=configuration.embedding_dimension,
+    model = Seq2SeqTransformer(
+        num_encoder_layers=configuration.num_encoder_layers,
+        num_decoder_layers=configuration.num_decoder_layers,
+        emb_size=configuration.embedding_dimension,
         nhead=configuration.nhead,
-        dropout=configuration.dropout,
-    )
-
-    criterion = build_criterion(configuration)
-    model = DETR(
-        transformer,
-        num_classes=configuration.num_classes,
-        num_queries=configuration.num_queries,
-        num_nucleobase_letters=configuration.num_nucleobase_letters,
-        criterion=criterion,
+        src_vocab_size=configuration.num_nucleobase_letters,
+        tgt_vocab_size=configuration.num_nucleobase_letters
+        + configuration.num_classes
+        + 3,
         configuration=configuration,
     )
-
     configuration.logging_version = f"{configuration.experiment_prefix}_{configuration.dataset_id}_{configuration.datetime}"
 
     tensorboard_logger = pl.loggers.TensorBoardLogger(
@@ -90,7 +85,7 @@ def main():
         default_hp_metric=False,
     )
     early_stopping_callback = pl.callbacks.early_stopping.EarlyStopping(
-        monitor="val_losses",
+        monitor="validation_loss",
         min_delta=configuration.loss_delta,
         patience=configuration.patience,
         verbose=True,

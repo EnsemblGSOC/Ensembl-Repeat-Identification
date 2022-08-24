@@ -9,7 +9,7 @@ experiment_prefix: standard
 
 # dataset
 ################################################################################
-chromosomes: ['chr1', 'chr2', 'chr3']
+chromosomes: ['chr1']
 dataset_id: hg38
 #chromosomes: ['chr10']
 segment_length: 2000
@@ -32,8 +32,10 @@ iou_threshold: 0.5
 # network architecture
 ################################################################################
 ################################################################################
-embedding_dimension: 32
-nhead: 8
+embedding_dimension: 6
+nhead: 6
+num_encoder_layers: 6
+num_decoder_layers: 6
 # training
 ################################################################################
 lr: 0.0001
@@ -47,6 +49,6 @@ dropout: 0.3
 gpus: 1
 loss_delta: 0
 patience: 5
-profiler: pytorch
+profiler: null
 num_sample_predictions: 5
 ################################################################################
