@@ -6,6 +6,8 @@ from typing import Iterable
 from tqdm import tqdm
 import datetime as dt
 import warnings
+import pathlib
+import logging
 
 # third party
 import numpy as np
@@ -22,6 +24,7 @@ from dataloader import build_dataloader, build_seq2seq_dataset
 from model import DETR, build_criterion
 from seq2seq import Seq2SeqTransformer
 from transformer import Transformer
+from utils import logger, logging_formatter_time_message
 
 
 def argument():
@@ -53,6 +56,17 @@ def main():
         configuration.datetime = dt.datetime.now().isoformat(
             sep="_", timespec="seconds"
         )
+
+    experiment_name = f"{configuration.experiment_prefix}_{configuration.dataset_id}_{configuration.datetime}"
+
+    experiments_directory = configuration.save_directory
+
+    experiment_directory = pathlib.Path(f"{experiments_directory}/{experiment_name}")
+
+    file_handler = logging.FileHandler(f"{experiment_directory}/test_output.log")
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(logging_formatter_time_message)
+    logger.addHandler(file_handler)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(device)
