@@ -4,9 +4,13 @@ Modules to compute the matching cost and solve the corresponding LSAP.
 Copy-paste from the following link with modifications.
 Link: https://github.com/facebookresearch/detr/blob/main/models/matcher.py#L12
 """
+
+
+# third party
 import torch
+
 from scipy.optimize import linear_sum_assignment
-from torch import nn, Tensor
+from torch import Tensor, nn
 
 
 class HungarianMatcher(nn.Module):

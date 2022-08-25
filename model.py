@@ -1,20 +1,22 @@
 # standard library
 import math
-from typing import List
 import time
 
+from typing import List
+
 # third party
+import numpy as np
+import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
-from torch import nn, Tensor
-import pytorch_lightning as pl
-import numpy as np
+
+from torch import Tensor, nn
 
 # project
+from dataloader import DeNormalizeCoordinates, TranslateCoordinatesReverse
+from mAP_validation import mean_average_precision
 from matcher_segment import build_matcher, segment_IOU
 from transformer import Transformer
-from mAP_validation import mean_average_precision
-from dataloader import DeNormalizeCoordinates, TranslateCoordinatesReverse
 from utils import logger
 
 

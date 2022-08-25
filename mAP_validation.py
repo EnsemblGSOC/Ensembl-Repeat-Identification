@@ -1,6 +1,10 @@
-import torch
+# standard library
 from collections import Counter
+
+# third party
 import numpy as np
+import torch
+
 
 epsilon = 1e-6
 

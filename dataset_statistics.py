@@ -21,12 +21,18 @@ import pathlib
 import matplotlib.pyplot as plt
 import pandas as pd
 
+
+# isort: off
+
 # %%
 # %load_ext autoreload
 # %autoreload 2
 
+# isort: on
+
 # %%
 from utils import annotations_directory, hits_column_dtypes, hits_to_dataframe
+
 
 # %%
 figsize = (16, 9)

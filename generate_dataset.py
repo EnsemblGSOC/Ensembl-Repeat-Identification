@@ -9,7 +9,7 @@ from pytorch_lightning.utilities import AttributeDict
 # project
 from metadata import genomes
 from retrieve_annotation import retrieve_annotation
-from utils import genome_assemblies_directory, download_and_extract
+from utils import download_and_extract, genome_assemblies_directory
 
 
 def retrieve_genome_assembly(assembly: str):

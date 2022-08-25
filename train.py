@@ -1,23 +1,24 @@
 # standard library
+import argparse
+import datetime as dt
+import logging
 import math
 import os
-import sys
-from typing import Iterable
-from tqdm import tqdm
-import datetime as dt
-import warnings
 import pathlib
-import logging
+import random
+import sys
+import warnings
+
+from typing import Iterable
 
 # third party
 import numpy as np
+import pytorch_lightning as pl
 import torch
-import random
-import argparse
+import yaml
 
 from pytorch_lightning.utilities import AttributeDict
-import yaml
-import pytorch_lightning as pl
+from tqdm import tqdm
 
 # project
 from dataloader import build_dataloader, build_seq2seq_dataset

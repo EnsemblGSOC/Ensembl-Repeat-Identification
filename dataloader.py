@@ -23,11 +23,11 @@ from tqdm import tqdm
 # project
 from metadata import emojis
 from utils import (
+    CoordinatesToTensor,
     DnaSequenceMapper,
+    SampleMapEncode,
     data_directory,
     genome_assemblies_directory,
-    SampleMapEncode,
-    CoordinatesToTensor,
 )
 
 
