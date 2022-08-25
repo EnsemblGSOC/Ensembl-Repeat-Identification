@@ -15,7 +15,7 @@ import yaml
 from pytorch_lightning.utilities import AttributeDict
 
 # project
-from dataloader import build_seq2seq_dataset
+from dataloader import generate_seq2seq_dataloaders
 from seq2seq import Seq2SeqTransformer
 from utils import logger, logging_formatter_time_message
 
@@ -54,7 +54,6 @@ def main():
     experiments_directory = configuration.save_directory
 
     experiment_directory = pathlib.Path(f"{experiments_directory}/{experiment_name}")
-
     experiment_directory.mkdir(parents=True, exist_ok=True)
 
     file_handler = logging.FileHandler(f"{experiment_directory}/test_output.log")
@@ -64,9 +63,12 @@ def main():
 
     pl.utilities.seed.seed_everything(configuration.seed)
 
-    training_dataloader, validation_dataloader, test_dataloader = build_seq2seq_dataset(
-        configuration
-    )
+    (
+        training_dataloader,
+        validation_dataloader,
+        test_dataloader,
+    ) = generate_seq2seq_dataloaders(configuration)
+
     model = Seq2SeqTransformer(
         num_encoder_layers=configuration.num_encoder_layers,
         num_decoder_layers=configuration.num_decoder_layers,

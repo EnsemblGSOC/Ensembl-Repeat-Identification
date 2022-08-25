@@ -1,20 +1,32 @@
 # standard library
 import argparse
 
-# project
-from retrieve_annotation import retrieve_annotation
-from retrieve_genome_assembly import retrieve_genome_assembly
-from pytorch_lightning.utilities import AttributeDict
+# third party
 import yaml
 
+from pytorch_lightning.utilities import AttributeDict
 
-def generate_datasets(args):
-    with open(args.configuration) as file:
-        configuration = yaml.safe_load(file)
-    configuration = AttributeDict(configuration)
+# project
+from metadata import genomes
+from retrieve_annotation import retrieve_annotation
+from utils import data_directory, download_and_extract
 
-    retrieve_genome_assembly(args.species)
-    retrieve_annotation(args.species, configuration)
+
+def retrieve_genome_assembly(assembly: str):
+    """Download (reference) genome assembly and convert to appropriate format.
+
+    Args:
+        assembly: genome assembly name used by Dfam (e.g. hg38)
+    """
+    assemblies_directory = data_directory / "genome_assemblies"
+    assemblies_directory.mkdir(exist_ok=True)
+
+    download_and_extract(
+        assemblies_directory,
+        f"{assembly}.fa",
+        genomes[assembly]["genome_url"],
+        genomes[assembly]["genome_checksum"],
+    )
 
 
 def main():
@@ -27,12 +39,10 @@ def main():
         help="generate species datasets for deep learning",
     )
 
-    parser.add_argument(
-        "--configuration", type=str, help="experiment configuration file path"
-    )
     args = parser.parse_args()
 
-    generate_datasets(args)
+    retrieve_genome_assembly(args.species)
+    retrieve_annotation(args.species)
 
 
 if __name__ == "__main__":

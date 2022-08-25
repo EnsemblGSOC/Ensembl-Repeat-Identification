@@ -3,15 +3,16 @@ import csv
 import json
 import pathlib
 
-from typing import NamedTuple, Union, List
+from typing import List, NamedTuple, Union
 
 # third party
 import requests
 
-# project
-from config import chr_length, species_integrity, url_label_information
-from utils import data_directory, download_and_extract, hits_to_dataframe
 from pytorch_lightning.utilities import AttributeDict
+
+# project
+from metadata import genomes
+from utils import data_directory, download_and_extract, hits_to_dataframe
 
 
 class AnnotationInfo(NamedTuple):
@@ -64,7 +65,7 @@ def download_repeat_families(repeat_families_path: Union[str, pathlib.Path]):
         json.dump(families, json_file)
 
 
-def retrieve_annotation(assembly: str, configuration: AttributeDict):
+def retrieve_annotation(assembly: str):
     """Download the assembly annotation and convert to appropriate format.
 
     Args:
@@ -84,23 +85,21 @@ def retrieve_annotation(assembly: str, configuration: AttributeDict):
         repeat_families = json.load(json_file)
 
     # download and extract the original annotations file
-    checksum = species_integrity[f"{assembly}.hits"]
-    print(checksum, configuration.repeat_types)
     download_and_extract(
         annotations_directory,
         f"{assembly}.hits",
-        url_label_information[assembly],
-        checksum,
+        genomes[assembly]["annotation_url"],
+        genomes[assembly]["annotation_checksum"],
     )
 
-    wanted = extract_lines(
-        f"{annotations_directory}/{assembly}.hits",
-        repeat_families,
-        configuration.repeat_types,
-    )
-    for chromosome, _ in chr_length.items():
-        data = list(filter(lambda x: x.chromosome == chromosome, wanted))
-        save_annotations(annotations_directory, assembly, chromosome, data)
+    # wanted = extract_lines(
+    #     f"{annotations_directory}/{assembly}.hits",
+    #     repeat_families,
+    #     configuration.repeat_types,
+    # )
+    # for chromosome, _ in chr_length.items():
+    #     data = list(filter(lambda x: x.chromosome == chromosome, wanted))
+    #     save_annotations(annotations_directory, assembly, chromosome, data)
 
 
 def extract_lines(
@@ -115,8 +114,8 @@ def extract_lines(
     """
     print("Generating label datasets \U0001F43C\U0001F43E\U0001F43E")
     wanted = []
-    hits_pd = hits_to_dataframe(assembly_fasta_path)
-    for _, row in hits_pd.iterrows():
+    hits_df = hits_to_dataframe(assembly_fasta_path)
+    for _, row in hits_df.iterrows():
         accession = row["family_acc"]
         if accession == "DF0000001":
             continue

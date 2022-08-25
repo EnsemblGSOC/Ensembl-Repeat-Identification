@@ -21,7 +21,7 @@ from torchvision import transforms
 from tqdm import tqdm
 
 # project
-from config import emojis
+from metadata import emojis
 from utils import data_directory
 
 
@@ -175,7 +175,7 @@ class CategoryMapper:
 class RepeatSequenceDataset(torch.utils.data.Dataset):
     def __init__(
         self,
-        fasta_path: Union[str, pathlib.Path],
+        genome_fasta_path: Union[str, pathlib.Path],
         annotations_path: Union[str, pathlib.Path],
         chromosomes: List[str],
         dna_sequence_mapper: Type[DnaSequenceMapper],
@@ -186,7 +186,9 @@ class RepeatSequenceDataset(torch.utils.data.Dataset):
         super().__init__()
         self.chromosomes = chromosomes
         self.dna_sequence_mapper = dna_sequence_mapper
-        self.path = [f"{fasta_path}/{chromosome}.fa" for chromosome in self.chromosomes]
+        self.path = [
+            f"{genome_fasta_path}/{chromosome}.fa" for chromosome in self.chromosomes
+        ]
         self.annotation = [
             f"{annotations_path}/hg38_{chromosome}.csv"
             for chromosome in self.chromosomes
@@ -364,7 +366,7 @@ class RepeatSequenceDataset(torch.utils.data.Dataset):
 def build_dataloader(configuration):
     dna_sequence_mapper = DnaSequenceMapper()
     dataset = RepeatSequenceDataset(
-        fasta_path="./data/genome_assemblies/datasets",
+        genome_fasta_path="./data/genome_assemblies/datasets",
         annotations_path="./data/annotations",
         chromosomes=configuration.chromosomes,
         segment_length=configuration.segment_length,
@@ -422,10 +424,10 @@ def build_dataloader(configuration):
     return train_loader, validation_loader, test_loader
 
 
-def build_seq2seq_dataset(configuration):
+def generate_seq2seq_dataloaders(configuration):
     dna_sequence_mapper = DnaSequenceMapper()
     dataset = RepeatSequenceDataset(
-        fasta_path="./data/genome_assemblies/datasets",
+        genome_fasta_path="./data/genome_assemblies/datasets",
         annotations_path="./data/annotations",
         chromosomes=configuration.chromosomes,
         segment_length=configuration.segment_length,
@@ -554,7 +556,7 @@ class TranslateCoordinates:
 if __name__ == "__main__":
     dna_sequence_mapper = DnaSequenceMapper()
     dataset = RepeatSequenceDataset(
-        fasta_path="./data/genome_assemblies/datasets",
+        genome_fasta_path="./data/genome_assemblies/datasets",
         annotations_path="./data/annotations",
         chromosomes=["chrX"],
         dna_sequence_mapper=dna_sequence_mapper,
