@@ -12,7 +12,7 @@ from pytorch_lightning.utilities import AttributeDict
 
 # project
 from metadata import genomes
-from utils import data_directory, download_and_extract, hits_to_dataframe
+from utils import annotations_directory, download_and_extract, hits_to_dataframe
 
 
 class AnnotationInfo(NamedTuple):
@@ -71,10 +71,6 @@ def retrieve_annotation(assembly: str):
     Args:
         assembly: genome assembly name used by Dfam (e.g. hg38)
     """
-    # set and create the annotations directory
-    annotations_directory = data_directory / "annotations"
-    annotations_directory.mkdir(exist_ok=True)
-
     # download Dfam repeat families
     repeat_families_path = annotations_directory / "repeat_families.json"
     if not repeat_families_path.is_file():
@@ -143,18 +139,18 @@ def extract_lines(
 
 
 def save_annotations(
-    assemblies_directory: str, assembly: str, chromosome: str, annotations: list
+    genome_assemblies_directory: str, assembly: str, chromosome: str, annotations: list
 ):
     """make files to save the new datasets
 
     Args:
-        assemblies_directory: assemblies directory path
+        genome_assemblies_directory: genome assemblies directory path
             e.g. data/genome_assemblies
         assembly: genome assembly name used by Dfam (e.g. hg38)
         chromosome: chromosome name (e.g. chr1)
         annotations: the target region, with its own alignment star, end and type.
     """
-    annotations_csv = f"{assemblies_directory}/{assembly}_{chromosome}.csv"
+    annotations_csv = f"{genome_assemblies_directory}/{assembly}_{chromosome}.csv"
     with open(annotations_csv, "a+", newline="") as csv_file:
         csv_writer = csv.writer(csv_file, delimiter="\t", lineterminator="\n")
         csv_writer.writerows(

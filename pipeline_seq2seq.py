@@ -15,9 +15,8 @@ import yaml
 from pytorch_lightning.utilities import AttributeDict
 
 # project
-from dataloader import generate_seq2seq_dataloaders
 from seq2seq import Seq2SeqTransformer
-from utils import logger, logging_formatter_time_message
+from utils import generate_seq2seq_dataloaders, logger, logging_formatter_time_message
 
 
 def main():

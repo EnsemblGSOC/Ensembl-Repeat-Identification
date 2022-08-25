@@ -9,7 +9,7 @@ from pytorch_lightning.utilities import AttributeDict
 # project
 from metadata import genomes
 from retrieve_annotation import retrieve_annotation
-from utils import data_directory, download_and_extract
+from utils import genome_assemblies_directory, download_and_extract
 
 
 def retrieve_genome_assembly(assembly: str):
@@ -18,11 +18,8 @@ def retrieve_genome_assembly(assembly: str):
     Args:
         assembly: genome assembly name used by Dfam (e.g. hg38)
     """
-    assemblies_directory = data_directory / "genome_assemblies"
-    assemblies_directory.mkdir(exist_ok=True)
-
     download_and_extract(
-        assemblies_directory,
+        genome_assemblies_directory,
         f"{assembly}.fa",
         genomes[assembly]["genome_url"],
         genomes[assembly]["genome_checksum"],

@@ -178,7 +178,7 @@ class Seq2SeqTransformer(pl.LightningModule):
         ].tolist()
 
         logger.info("\nsample assignments")
-        self.configuration.category_mapper.print_label_and_emoji(logger)
+        self.configuration.repeat_type_mapper.print_label_and_emoji(logger)
         for target, predict in zip(self.targets, self.predict_targets):
             logger.info(
                 "".join(list(map(lambda x: self.class_transform(int(x)), target)))
@@ -197,7 +197,7 @@ class Seq2SeqTransformer(pl.LightningModule):
                 label_index
             )
         label_index -= num_nucleobase_letters
-        return self.configuration.category_mapper.label_to_emoji(label_index)
+        return self.configuration.repeat_type_mapper.label_to_emoji(label_index)
 
     def test_step(self, batch, batch_idx):
         samples, targets = batch

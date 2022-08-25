@@ -26,15 +26,10 @@ import pandas as pd
 # %autoreload 2
 
 # %%
-from utils import hits_column_dtypes, hits_to_dataframe
+from utils import annotations_directory, hits_column_dtypes, hits_to_dataframe
 
 # %%
 figsize = (16, 9)
-
-# %%
-data_directory = pathlib.Path("../data")
-
-annotations_directory = data_directory / "annotations"
 
 # %% [markdown]
 # ## repeat annotations

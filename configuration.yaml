@@ -9,9 +9,12 @@ experiment_prefix: standard
 
 # dataset
 ################################################################################
-chromosomes: ['chr1']
 dataset_id: hg38
-#chromosomes: ['chr10']
+
+#chromosomes: ["chr1"]
+#chromosomes: ["chr10"]
+chromosomes: ["chr20"]
+
 segment_length: 2000
 overlap: 500
 num_queries: 10

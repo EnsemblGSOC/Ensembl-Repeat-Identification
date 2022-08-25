@@ -22,7 +22,7 @@ from tqdm import tqdm
 
 # project
 from metadata import emojis
-from utils import data_directory
+from utils import data_directory, genome_assemblies_directory
 
 
 class DnaSequenceMapper:
@@ -176,7 +176,7 @@ class RepeatSequenceDataset(torch.utils.data.Dataset):
     def __init__(
         self,
         genome_fasta_path: Union[str, pathlib.Path],
-        annotations_path: Union[str, pathlib.Path],
+        annotation_path: Union[str, pathlib.Path],
         chromosomes: List[str],
         dna_sequence_mapper: Type[DnaSequenceMapper],
         segment_length: int = 2000,
@@ -184,6 +184,7 @@ class RepeatSequenceDataset(torch.utils.data.Dataset):
         transform=None,
     ):
         super().__init__()
+
         self.chromosomes = chromosomes
         self.dna_sequence_mapper = dna_sequence_mapper
         self.path = [
@@ -194,16 +195,16 @@ class RepeatSequenceDataset(torch.utils.data.Dataset):
             for chromosome in self.chromosomes
         ]
 
-        self.transform = transform
         self.segment_length = segment_length
         self.overlap = overlap
+        self.transform = transform
         self.repeat_list = self.select_chr()
 
-        category = self.get_unique_category()
-        print(len(category), category)
-        self.category_mapper = CategoryMapper(category)
+        repeat_types = self.get_unique_categories()
+        print(len(repeat_types), repeat_types)
+        self.repeat_type_mapper = CategoryMapper(repeat_types)
 
-    def get_unique_category(self):
+    def get_unique_categories(self):
         df_list = [
             pd.read_csv(annotation_path, sep="\t", names=["start", "end", "subtype"])
             for annotation_path in self.annotation
@@ -299,7 +300,7 @@ class RepeatSequenceDataset(torch.utils.data.Dataset):
         sample = {"sequence": sequence, "start": start}
 
         repeat_ids_series = repeats_in_sequence["subtype"].map(
-            self.category_mapper.label_to_index
+            self.repeat_type_mapper.label_to_index
         )
         repeat_ids_array = np.array(repeat_ids_series, np.int32)
         repeat_ids_tensor = torch.tensor(repeat_ids_array, dtype=torch.long)
@@ -319,7 +320,7 @@ class RepeatSequenceDataset(torch.utils.data.Dataset):
         end = start + self.segment_length
 
         repeat_ids_series = repeats_in_sequence["subtype"].map(
-            self.category_mapper.label_to_index
+            self.repeat_type_mapper.label_to_index
         )
         repeat_ids_array = np.array(repeat_ids_series, np.int32)
         # repeat_ids_tensor = torch.tensor(repeat_ids_array, dtype=torch.long)
@@ -337,7 +338,7 @@ class RepeatSequenceDataset(torch.utils.data.Dataset):
             target[start:end] = repeat_cls
         # <sos> target <eos>
         sos = (
-            self.category_mapper.num_categories
+            self.repeat_type_mapper.num_categories
             + self.dna_sequence_mapper.num_nucleobase_letters
         )
         eos = sos + 1
@@ -367,7 +368,7 @@ def build_dataloader(configuration):
     dna_sequence_mapper = DnaSequenceMapper()
     dataset = RepeatSequenceDataset(
         genome_fasta_path="./data/genome_assemblies/datasets",
-        annotations_path="./data/annotations",
+        annotation_path="./data/annotations",
         chromosomes=configuration.chromosomes,
         segment_length=configuration.segment_length,
         overlap=configuration.overlap,
@@ -381,7 +382,7 @@ def build_dataloader(configuration):
             ]
         ),
     )
-    configuration.num_classes = dataset.category_mapper.num_categories
+    configuration.num_classes = dataset.repeat_type_mapper.num_categories
     configuration.dna_sequence_mapper = dataset.dna_sequence_mapper
     configuration.num_nucleobase_letters = (
         configuration.dna_sequence_mapper.num_nucleobase_letters
@@ -420,65 +421,6 @@ def build_dataloader(configuration):
         batch_size=configuration.batch_size,
         sampler=test_sampler,
         collate_fn=dataset.collate_fn,
-    )
-    return train_loader, validation_loader, test_loader
-
-
-def generate_seq2seq_dataloaders(configuration):
-    dna_sequence_mapper = DnaSequenceMapper()
-    dataset = RepeatSequenceDataset(
-        genome_fasta_path="./data/genome_assemblies/datasets",
-        annotations_path="./data/annotations",
-        chromosomes=configuration.chromosomes,
-        segment_length=configuration.segment_length,
-        overlap=configuration.overlap,
-        dna_sequence_mapper=dna_sequence_mapper,
-        transform=transforms.Compose(
-            [
-                SampleMapEncode(dna_sequence_mapper),
-                CoordinatesToTensor(),
-                ZeroStartCoordinates(),
-            ]
-        ),
-    )
-    configuration.num_classes = dataset.category_mapper.num_categories
-    configuration.dna_sequence_mapper = dataset.dna_sequence_mapper
-    configuration.category_mapper = dataset.category_mapper
-    configuration.num_nucleobase_letters = (
-        configuration.dna_sequence_mapper.num_nucleobase_letters
-    )
-
-    dataset_size = len(dataset)
-    if hasattr(configuration, "dataset_size"):
-        dataset_size = min(dataset_size, configuration.dataset_size)
-    indices = list(range(dataset_size))
-    validation_size = int(configuration.validation_ratio * dataset_size)
-    test_size = int(configuration.test_ratio * dataset_size)
-    np.random.seed(configuration.seed)
-    np.random.shuffle(indices)
-    val_indices, test_indices, train_indices = (
-        indices[:validation_size],
-        indices[validation_size : validation_size + test_size],
-        indices[validation_size + test_size : dataset_size],
-    )
-
-    train_sampler = SubsetRandomSampler(train_indices)
-    valid_sampler = SubsetRandomSampler(val_indices)
-    test_sampler = SubsetRandomSampler(test_indices)
-    train_loader = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=configuration.batch_size,
-        sampler=train_sampler,
-    )
-    validation_loader = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=configuration.batch_size,
-        sampler=valid_sampler,
-    )
-    test_loader = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=configuration.batch_size,
-        sampler=test_sampler,
     )
     return train_loader, validation_loader, test_loader
 
@@ -557,7 +499,7 @@ if __name__ == "__main__":
     dna_sequence_mapper = DnaSequenceMapper()
     dataset = RepeatSequenceDataset(
         genome_fasta_path="./data/genome_assemblies/datasets",
-        annotations_path="./data/annotations",
+        annotation_path="./data/annotations",
         chromosomes=["chrX"],
         dna_sequence_mapper=dna_sequence_mapper,
         transform=transforms.Compose(
