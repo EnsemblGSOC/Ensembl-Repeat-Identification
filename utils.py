@@ -6,12 +6,14 @@ import pathlib
 import shutil
 import sys
 
-from typing import Union
+from typing import List, Type, Union
 
 # third party
 import pandas as pd
 import requests
+import torch
 
+from torchvision import transforms
 from tqdm import tqdm
 
 
@@ -57,6 +59,62 @@ hits_column_dtypes = {
     "sq-len": "int",
     "kimura_div": "float",
 }
+
+
+class DnaSequenceMapper:
+    """
+    DNA sequences translation to one-hot or label encoding.
+    """
+
+    def __init__(self):
+        nucleobase_symbols = ["A", "C", "G", "T", "N"]
+
+        self.nucleobase_letters = sorted(nucleobase_symbols)
+
+        self.num_nucleobase_letters = len(self.nucleobase_letters)
+
+        self.nucleobase_letter_to_index = {
+            nucleobase_letter: index
+            for index, nucleobase_letter in enumerate(self.nucleobase_letters)
+        }
+
+        self.index_to_nucleobase_letter = {
+            index: nucleobase_letter
+            for index, nucleobase_letter in enumerate(self.nucleobase_letters)
+        }
+
+    def sequence_to_one_hot(self, sequence):
+        sequence_indexes = [
+            self.nucleobase_letter_to_index[nucleobase_letter]
+            for nucleobase_letter in sequence
+        ]
+        one_hot_sequence = F.one_hot(
+            torch.tensor(sequence_indexes), num_classes=self.num_nucleobase_letters
+        )
+        one_hot_sequence = one_hot_sequence.type(torch.float32)
+
+        return one_hot_sequence
+
+    def sequence_to_label_encoding(self, sequence):
+        label_encoded_sequence = [
+            self.nucleobase_letter_to_index[nucleobase] for nucleobase in sequence
+        ]
+
+        label_encoded_sequence = torch.tensor(label_encoded_sequence, dtype=torch.int32)
+
+        return label_encoded_sequence
+
+    def label_encoding_to_sequence(self, label_encoded_sequence):
+        sequence = [
+            self.index_to_nucleobase_letter[label] for label in label_encoded_sequence
+        ]
+        return "".join(sequence)
+
+    def label_encoding_to_nucleobase_letter(self, label):
+        if label in self.index_to_nucleobase_letter.keys():
+            return self.index_to_nucleobase_letter[label]
+        else:
+            return label
 
 
 class RepeatSequenceDataset(torch.utils.data.Dataset):
@@ -415,3 +473,42 @@ def hits_to_dataframe(hits_path: Union[pathlib.Path, str]) -> pd.DataFrame:
     hits = hits.astype(hits_column_dtypes)
 
     return hits
+
+
+class SampleMapEncode:
+    def __init__(self, mapper):
+        self.sequence_mapper = mapper
+
+    def __call__(self, item):
+        # [n, 2]
+        sample, target_df = item
+        sample["sequence"] = self.sequence_mapper.sequence_to_label_encoding(
+            sample["sequence"]
+        )
+        return (sample, target_df)
+
+
+class CoordinatesToTensor:
+    def __init__(self):
+        pass
+
+    def __call__(self, item):
+        # [n, 2]
+        sample, target_df = item
+        target_array = np.array(target_df, dtype=np.float32)
+        target_tensor = torch.tensor(target_array, dtype=torch.float32)
+        return (sample, target_tensor)
+
+
+class ZeroStartCoordinates:
+    """Normalize a sample's repeat annotation coordinates to a relative location
+    in the sequence, defined as start and end floats between 0 and 1."""
+
+    def __init__(self):
+        pass
+
+    def __call__(self, item):
+        sample, coordinates = item
+        start_coordinate = sample["start"]
+        coordinates[:, :] -= start_coordinate
+        return (sample, coordinates)
