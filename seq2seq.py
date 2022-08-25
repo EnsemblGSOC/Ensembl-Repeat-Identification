@@ -1,14 +1,22 @@
+"""
+Seq2Seq transformer based on
+https://pytorch.org/tutorials/beginner/translation_transformer.html
+"""
+
+
 # standard library
 import math
-from typing import List
 import time
 
+from typing import List
+
 # third party
+import numpy as np
+import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
-from torch import nn, Tensor
-import pytorch_lightning as pl
-import numpy as np
+
+from torch import Tensor, nn
 from torch.nn import Transformer
 
 # project
@@ -16,8 +24,13 @@ from utils import logger
 
 
 class PositionalEncoding(nn.Module):
+    """
+    Helper Module that adds positional encoding to the token embedding to introduce
+    a notion of word order.
+    """
+
     def __init__(self, emb_size: int, dropout: float, maxlen: int = 3000):
-        super(PositionalEncoding, self).__init__()
+        super().__init__()
         den = torch.exp(-torch.arange(0, emb_size, 2) * math.log(10000) / emb_size)
         pos = torch.arange(0, maxlen).reshape(maxlen, 1)
         pos_embedding = torch.zeros((maxlen, emb_size))
@@ -32,10 +45,14 @@ class PositionalEncoding(nn.Module):
         )
 
 
-# helper Module to convert tensor of input indices into corresponding tensor of token embeddings
 class TokenEmbedding(nn.Module):
+    """
+    Helper Module to convert tensor of input indices into corresponding tensor of
+    token embeddings.
+    """
+
     def __init__(self, vocab_size: int, emb_size):
-        super(TokenEmbedding, self).__init__()
+        super().__init__()
         self.embedding = nn.Embedding(vocab_size, emb_size)
         self.emb_size = emb_size
 
@@ -44,6 +61,10 @@ class TokenEmbedding(nn.Module):
 
 
 class Seq2SeqTransformer(pl.LightningModule):
+    """
+    Seq2Seq network
+    """
+
     def __init__(
         self,
         num_encoder_layers: int,
@@ -56,7 +77,8 @@ class Seq2SeqTransformer(pl.LightningModule):
         dim_feedforward: int = 512,
         dropout: float = 0.1,
     ):
-        super(Seq2SeqTransformer, self).__init__()
+        super().__init__()
+
         self.configuration = configuration
         self.transformer = Transformer(
             d_model=emb_size,

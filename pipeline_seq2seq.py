@@ -1,32 +1,29 @@
 # standard library
-import math
-import os
-import sys
-from typing import Iterable
-from tqdm import tqdm
+import argparse
 import datetime as dt
-import warnings
-import pathlib
 import logging
+import pathlib
+import random
+import warnings
 
 # third party
 import numpy as np
+import pytorch_lightning as pl
 import torch
-import random
-import argparse
+import yaml
 
 from pytorch_lightning.utilities import AttributeDict
-import yaml
-import pytorch_lightning as pl
 
 # project
-from dataloader import build_dataloader, build_seq2seq_dataset
+from dataloader import build_seq2seq_dataset
 from seq2seq import Seq2SeqTransformer
-from transformer import Transformer
 from utils import logger, logging_formatter_time_message
 
 
-def argument():
+def main():
+    """
+    main function
+    """
     parser = argparse.ArgumentParser("Set transformer detector", add_help=False)
     parser.add_argument(
         "--configuration", type=str, help="experiment configuration file path"
@@ -36,14 +33,10 @@ def argument():
         help="datetime string; if set this will be used instead of generating a new one",
     )
     args = parser.parse_args()
-    return args
 
-
-def main():
-    args = argument()
     warnings.filterwarnings(
         "ignore",
-        ".*does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument.*",
+        ".*does not have many workers which may be a bottleneck. Consider increasing.*",
     )
     with open(args.configuration) as file:
         configuration = yaml.safe_load(file)
@@ -69,9 +62,7 @@ def main():
     file_handler.setFormatter(logging_formatter_time_message)
     logger.addHandler(file_handler)
 
-    torch.manual_seed(configuration.seed)
-    np.random.seed(configuration.seed)
-    random.seed(configuration.seed)
+    pl.utilities.seed.seed_everything(configuration.seed)
 
     training_dataloader, validation_dataloader, test_dataloader = build_seq2seq_dataset(
         configuration

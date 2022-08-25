@@ -1,10 +1,11 @@
 # standard library
 import gzip
 import hashlib
+import logging
 import pathlib
 import shutil
-import logging
 import sys
+
 from typing import Union
 
 # third party

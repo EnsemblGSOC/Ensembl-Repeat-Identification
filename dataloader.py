@@ -1,24 +1,28 @@
+"""
+Custom Dataset, DataLoader, and supporting code.
+"""
+
+
 # standard library
 import pathlib
 import pickle
 
-from typing import List, Union, Type
+from typing import List, Type, Union
 
 # third party
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
-import torchvision.transforms as transforms
 
 from pyfaidx import Fasta
-from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.sampler import SubsetRandomSampler
+from torchvision import transforms
 from tqdm import tqdm
 
 # project
-from utils import data_directory
 from config import emojis
+from utils import data_directory
 
 
 class DnaSequenceMapper:
@@ -168,7 +172,7 @@ class CategoryMapper:
         logger.info(self.label_to_emoji_dict)
 
 
-class RepeatSequenceDataset(Dataset):
+class RepeatSequenceDataset(torch.utils.data.Dataset):
     def __init__(
         self,
         fasta_path: Union[str, pathlib.Path],
@@ -288,7 +292,7 @@ class RepeatSequenceDataset(Dataset):
 
     def forward_strand(self, index):
         sequence, start, repeats_in_sequence = self.repeat_list[index]
-        end = start + self.segment_length
+        # end = start + self.segment_length
 
         sample = {"sequence": sequence, "start": start}
 
@@ -316,7 +320,7 @@ class RepeatSequenceDataset(Dataset):
             self.category_mapper.label_to_index
         )
         repeat_ids_array = np.array(repeat_ids_series, np.int32)
-        repeat_ids_tensor = torch.tensor(repeat_ids_array, dtype=torch.long)
+        # repeat_ids_tensor = torch.tensor(repeat_ids_array, dtype=torch.long)
 
         sample = {"sequence": sequence, "start": start}
 
