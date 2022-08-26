@@ -15,8 +15,8 @@ poetry install
 ### Generate the target repeat sequence datasets
 
 ```shell
-python generate_dataset.py --species <UCSC species ID>
+python generate_dataset.py --genome_assembly <UCSC genome assembly ID>
 
 # e.g.
-python generate_dataset.py --species hg38
+python generate_dataset.py --genome_assembly hg38
 ```

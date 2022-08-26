@@ -17,6 +17,8 @@
 import json
 import pathlib
 
+from pprint import pp as pprint
+
 # %%
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -31,7 +33,7 @@ import pandas as pd
 # isort: on
 
 # %%
-from utils import annotations_directory, hits_column_dtypes, hits_to_dataframe
+from utils import annotations_directory, hits_to_dataframe, repeat_families_path
 
 
 # %%
@@ -41,12 +43,15 @@ figsize = (16, 9)
 # ## repeat annotations
 
 # %%
+# %%time
+
 annotations_path = annotations_directory / "hg38.hits"
 
 repeats = hits_to_dataframe(annotations_path)
+# repeats = hits_to_dataframe(annotations_path, concise=True)
 
 # %%
-repeats.head()
+repeats
 
 # %%
 # show random sample of items
@@ -121,14 +126,11 @@ figure.add_axes(ax)
 
 # %%
 
-# %% [markdown]
+# %% [markdown] tags=[]
 # ## repeat families
 
 # %%
-from pprint import pp as pprint
-
-
-repeat_families_path = annotations_directory / "repeat_families.json"
+# %%time
 
 # load repeat families
 with open(repeat_families_path) as json_file:
@@ -151,7 +153,7 @@ families = pd.DataFrame.from_records(
 )
 
 # %%
-families.head()
+families
 
 # %%
 # show random sample of items

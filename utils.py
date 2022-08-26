@@ -16,6 +16,9 @@ import torch
 from torchvision import transforms
 from tqdm import tqdm
 
+# project
+from metadata import emojis
+
 
 # logging formats
 logging_formatter_time_message = logging.Formatter(
@@ -37,12 +40,14 @@ logger.addHandler(console_handler)
 # set and create dataset directories
 data_directory = pathlib.Path("data")
 data_directory.mkdir(exist_ok=True)
-genome_assemblies_directory = data_directory / "genome_assemblies"
-genome_assemblies_directory.mkdir(exist_ok=True)
+genomes_directory = data_directory / "genome_assemblies"
+genomes_directory.mkdir(exist_ok=True)
 annotations_directory = data_directory / "annotations"
 annotations_directory.mkdir(exist_ok=True)
 
-hits_column_dtypes = {
+repeat_families_path = annotations_directory / "repeat_families.json"
+
+hits_dtypes = {
     "seq_name": "string",
     "family_acc": "string",
     "family_name": "string",
@@ -457,22 +462,96 @@ def extract_gzip(
             shutil.copyfileobj(f_in, f_out)
 
 
-def hits_to_dataframe(hits_path: Union[pathlib.Path, str]) -> pd.DataFrame:
+def hits_to_dataframe(
+    hits_path: Union[pathlib.Path, str], concise=False
+) -> pd.DataFrame:
     """Read an annotation *.hits file to a pandas DataFrame.
 
     Args:
         hits_path: *.hits file path
     """
-    columns = hits_column_dtypes.keys()
+    columns = hits_dtypes.keys()
 
-    hits = pd.read_csv(hits_path, sep="\t", names=columns)
+    use_columns = [
+        "seq_name",
+        "family_acc",
+        "family_name",
+        "strand",
+        "ali-st",
+        "ali-en",
+    ]
 
-    # drop last row (contains the CSV header, i.e. column names)
-    hits.drop(hits.tail(1).index, inplace=True)
-
-    hits = hits.astype(hits_column_dtypes)
+    if concise:
+        hits = pd.read_csv(
+            hits_path, sep="\t", names=columns, usecols=use_columns, dtype=hits_dtypes
+        )
+    else:
+        hits = pd.read_csv(hits_path, sep="\t", names=columns, dtype=hits_dtypes)
 
     return hits
+
+
+class CategoryMapper:
+    """
+    Categorical data mapping class, with methods to translate from the category
+    text labels to one-hot encoding and vice versa.
+    """
+
+    def __init__(self, categories):
+        self.categories = sorted(categories)
+        self.num_categories = len(self.categories)
+        self.emojis = emojis[: self.num_categories + 2]
+        self.label_to_index_dict = {
+            label: index for index, label in enumerate(categories)
+        }
+        self.index_to_label_dict = {
+            index: label for index, label in enumerate(categories)
+        }
+        self.index_to_emoji_dict = {
+            index: emoji for index, emoji in enumerate(self.emojis)
+        }
+
+        self.label_to_emoji_dict = {
+            label: self.index_to_emoji_dict[index]
+            for index, label in enumerate(categories + ["sos", "eos"])
+        }
+
+    def label_to_index(self, label):
+        """
+        Get the class index of label.
+        """
+        return self.label_to_index_dict[label]
+
+    def index_to_label(self, index):
+        """
+        Get the label string from its class index.
+        """
+        return self.index_to_label_dict[index]
+
+    def label_to_emoji(self, index):
+        return self.index_to_emoji_dict[index]
+
+    def label_to_one_hot(self, label):
+        """
+        Get the one-hot representation of label.
+        """
+        one_hot_label = F.one_hot(
+            torch.tensor(self.label_to_index_dict[label]),
+            num_classes=self.num_categories,
+        )
+        one_hot_label = one_hot_label.type(torch.float32)
+        return one_hot_label
+
+    def one_hot_to_label(self, one_hot_label):
+        """
+        Get the label string from its one-hot representation.
+        """
+        index = torch.argmax(one_hot_label)
+        label = self.index_to_label_dict[index]
+        return label
+
+    def print_label_and_emoji(self, logger):
+        logger.info(self.label_to_emoji_dict)
 
 
 class SampleMapEncode:

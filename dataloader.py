@@ -23,11 +23,11 @@ from tqdm import tqdm
 # project
 from metadata import emojis
 from utils import (
+    CategoryMapper,
     CoordinatesToTensor,
     DnaSequenceMapper,
     SampleMapEncode,
     data_directory,
-    genome_assemblies_directory,
 )
 
 
@@ -57,69 +57,6 @@ class DeNormalizeCoordinates:
             int(coordinates[0].item() * self.segment_length),
             int(coordinates[1].item() * self.segment_length),
         )
-
-
-class CategoryMapper:
-    """
-    Categorical data mapping class, with methods to translate from the category
-    text labels to one-hot encoding and vice versa.
-    """
-
-    def __init__(self, categories):
-        self.categories = sorted(categories)
-        self.num_categories = len(self.categories)
-        self.emojis = emojis[: self.num_categories + 2]
-        self.label_to_index_dict = {
-            label: index for index, label in enumerate(categories)
-        }
-        self.index_to_label_dict = {
-            index: label for index, label in enumerate(categories)
-        }
-        self.index_to_emoji_dict = {
-            index: emoji for index, emoji in enumerate(self.emojis)
-        }
-
-        self.label_to_emoji_dict = {
-            label: self.index_to_emoji_dict[index]
-            for index, label in enumerate(categories + ["sos", "eos"])
-        }
-
-    def label_to_index(self, label):
-        """
-        Get the class index of label.
-        """
-        return self.label_to_index_dict[label]
-
-    def index_to_label(self, index):
-        """
-        Get the label string from its class index.
-        """
-        return self.index_to_label_dict[index]
-
-    def label_to_emoji(self, index):
-        return self.index_to_emoji_dict[index]
-
-    def label_to_one_hot(self, label):
-        """
-        Get the one-hot representation of label.
-        """
-        one_hot_label = F.one_hot(
-            torch.tensor(self.label_to_index_dict[label]),
-            num_classes=self.num_categories,
-        )
-        one_hot_label = one_hot_label.type(torch.float32)
-        return one_hot_label
-
-    def one_hot_to_label(self, one_hot_label):
-        """
-        Get the label string from its one-hot representation.
-        """
-        index = torch.argmax(one_hot_label)
-        label = self.index_to_label_dict[index]
-        return label
-
-    def print_label_and_emoji(self, logger):
-        logger.info(self.label_to_emoji_dict)
 
 
 class RepeatSequenceDataset(torch.utils.data.Dataset):
