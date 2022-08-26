@@ -63,9 +63,9 @@ def retrieve_annotation(genome_assembly: str):
     last_line = tail(annotation_path, n=1)[-1]
     if "seq_name" in last_line:
         # Delete the last line of the annotation hits file. That line contains the column names
-        # and overcomplicates loading the file to a dataframe.
+        # and overcomplicates loading the file to a DataFrame.
 
-        logger.info("deleting annotation hits file last line with column names...")
+        logger.info("deleting repeats annotation file last line with column names...")
         delete_last_line(annotation_path)
 
 
@@ -111,9 +111,10 @@ def download_repeat_families(repeat_families_path: Union[str, pathlib.Path]):
         json.dump(families, json_file)
 
 
-def generate_repeats_dataframe_pickle(genome_assembly):
+def generate_hits_dataframe_pickle(genome_assembly):
     """
-    Read the repeats annotation to a DataFrame and add repeat type and subtype names.
+    Read the repeats annotation / hits file to a DataFrame and add repeat type and
+    subtype names.
 
     Args:
         genome_assembly: genome assembly name used by Dfam (e.g. hg38)
@@ -122,28 +123,30 @@ def generate_repeats_dataframe_pickle(genome_assembly):
     annotation_path = annotations_directory / f"{genome_assembly}.hits"
 
     logger.info("loading repeats annotation...")
-    repeats = hits_to_dataframe(annotation_path, concise=True)
+    hits = hits_to_dataframe(annotation_path, concise=True)
 
     logger.info("loading repeat families dictionary...")
     with open(repeat_families_path) as json_file:
         families_dict = json.load(json_file)
 
-    logger.info("adding repeat type and subtype names to the repeats DataFrame...")
-    repeats["repeat_type_name"] = (
-        repeats[~repeats["family_acc"].map(families_dict).isna()]["family_acc"]
+    logger.info(
+        "adding repeat type and subtype names to the repeats annotation DataFrame..."
+    )
+    hits["repeat_type_name"] = (
+        hits[~hits["family_acc"].map(families_dict).isna()]["family_acc"]
         .map(families_dict)
         .apply(lambda x: x.get("repeat_type_name"))
     )
-    repeats["repeat_subtype_name"] = (
-        repeats[~repeats["family_acc"].map(families_dict).isna()]["family_acc"]
+    hits["repeat_subtype_name"] = (
+        hits[~hits["family_acc"].map(families_dict).isna()]["family_acc"]
         .map(families_dict)
         .apply(lambda x: x.get("repeat_subtype_name"))
     )
 
-    # save repeats dataset to a pickle file
-    repeats_pickle_path = data_directory / f"{genome_assembly}_repeats.pickle"
-    repeats.to_pickle(repeats_pickle_path)
-    logger.info(f"repeats saved at {repeats_pickle_path}")
+    # save hits DataFrame to a pickle file
+    hits_pickle_path = data_directory / f"{genome_assembly}_hits.pickle"
+    hits.to_pickle(hits_pickle_path)
+    logger.info(f"repeats annotation saved at {hits_pickle_path}")
 
 
 def tail(file_path, n=5):
@@ -204,7 +207,7 @@ def main():
     retrieve_genome_assembly(args.genome_assembly)
     retrieve_annotation(args.genome_assembly)
 
-    generate_repeats_dataframe_pickle(args.genome_assembly)
+    generate_hits_dataframe_pickle(args.genome_assembly)
 
 
 if __name__ == "__main__":
