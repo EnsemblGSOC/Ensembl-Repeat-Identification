@@ -4,7 +4,6 @@ import datetime as dt
 import logging
 import pathlib
 import random
-import warnings
 
 # third party
 import numpy as np
@@ -23,20 +22,20 @@ def main():
     """
     main function
     """
-    parser = argparse.ArgumentParser("Set transformer detector", add_help=False)
-    parser.add_argument(
+    argument_parser = argparse.ArgumentParser()
+    argument_parser.add_argument(
         "--configuration", type=str, help="experiment configuration file path"
     )
-    parser.add_argument(
+    argument_parser.add_argument(
         "--datetime",
         help="datetime string; if set this will be used instead of generating a new one",
     )
-    args = parser.parse_args()
-
-    warnings.filterwarnings(
-        "ignore",
-        ".*does not have many workers which may be a bottleneck. Consider increasing.*",
+    argument_parser.add_argument(
+        "--num_gpus", default=1, type=int, help="number of GPUs to use"
     )
+
+    args = argument_parser.parse_args()
+
     with open(args.configuration) as file:
         configuration = yaml.safe_load(file)
     configuration = AttributeDict(configuration)
@@ -94,8 +93,13 @@ def main():
         verbose=True,
     )
 
+    if torch.cuda.is_available():
+        num_gpus = args.num_gpus
+    else:
+        num_gpus = 0
+
     trainer = pl.Trainer(
-        gpus=configuration.gpus,
+        gpus=num_gpus,
         logger=tensorboard_logger,
         max_epochs=configuration.max_epochs,
         callbacks=[early_stopping_callback],

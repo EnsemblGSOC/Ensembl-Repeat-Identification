@@ -11,47 +11,97 @@ experiment_prefix: standard
 ################################################################################
 dataset_id: hg38
 
-#chromosomes: ["chr1"]
-#chromosomes: ["chr10"]
-chromosomes: ["chr20"]
+chromosomes: [
+  "chr1",
+  #"chr2",
+  #"chr3",
+  #"chr4",
+  #"chr5",
+  #"chr6",
+  #"chr7",
+  #"chr8",
+  #"chr9",
+  "chr10",
+  #"chr11",
+  #"chr12",
+  #"chr13",
+  #"chr14",
+  #"chr15",
+  #"chr16",
+  #"chr17",
+  #"chr18",
+  #"chr19",
+  "chr20",
+  #"chr21",
+  #"chr22",
+  #"chrX",
+  #"chrY",
+]
 
 segment_length: 2000
 overlap: 500
-num_queries: 10
-#repeat_types: ["LTR", "DNA", "LINE", "SINE", "RC", "Retroposon", "PLE", "Satellite", "tRNA", "snRNA", "rRNA", "scRNA"]
-repeat_types: ["DNA","LTR"]
+
+repeat_types: [
+  "LTR",
+  "DNA",
+  #"LINE",
+  #"SINE",
+  #"RC",
+  #"Retroposon",
+  #"PLE",
+  #"Satellite",
+  #"tRNA",
+  #"snRNA",
+  #"rRNA",
+  #"scRNA",
+]
+
 #dataset_size: 10
 ################################################################################
 
 # features
 ################################################################################
-cost_class: 1
-cost_segments: 1
-cost_siou: 1
-eos_coef: 1
-iou_threshold: 0.5
+#cost_class: 1
+#cost_segments: 1
+#cost_siou: 1
+#eos_coef: 1
+#iou_threshold: 0.5
 ################################################################################
 
 # network architecture
-################################################################################
 ################################################################################
 embedding_dimension: 6
 nhead: 6
 num_encoder_layers: 6
 num_decoder_layers: 6
+
+#num_queries: 10
+################################################################################
+
 # training
 ################################################################################
-lr: 0.0001
-max_epochs: 300
+#lr: 3.0e-4
+lr: 1.0e-4
+#lr: 3.0e-5
+
+max_norm: 0
+dropout: 0.3
+
 batch_size: 2
+
+seed: 42
 validation_ratio: 0.1
 test_ratio: 0.1
-max_norm: 0
-seed: 42
-dropout: 0.3
-gpus: 1
+
 loss_delta: 0
+
 patience: 5
+
+#max_epochs: 1
+#max_epochs: 10
+#max_epochs: 100
+max_epochs: 1000
+
 profiler: null
 num_sample_predictions: 5
 ################################################################################

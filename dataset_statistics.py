@@ -208,17 +208,17 @@ plt.show()
 # ## save repeat type and subtype names in repeats DataFrame
 
 # %%
-repeats["repeat_type_name"] = (
+repeats["repeat_type"] = (
     repeats[~repeats["family_acc"].map(families_dict).isna()]["family_acc"]
     .map(families_dict)
-    .apply(lambda x: x.get("repeat_type_name"))
+    .apply(lambda x: x.get("repeat_type"))
 )
 
 # %%
-repeats["repeat_subtype_name"] = (
+repeats["repeat_subtype"] = (
     repeats[~repeats["family_acc"].map(families_dict).isna()]["family_acc"]
     .map(families_dict)
-    .apply(lambda x: x.get("repeat_subtype_name"))
+    .apply(lambda x: x.get("repeat_subtype"))
 )
 
 # %%
@@ -230,9 +230,9 @@ repeats
 # ## select a repeat type
 
 # %%
-repeat_type_name = "LTR"
-repeats_type = repeats[repeats["repeat_type_name"] == repeat_type_name]
-families_type = families[families["repeat_type_name"] == repeat_type_name]
+repeat_type = "LTR"
+repeats_type = repeats[repeats["repeat_type"] == repeat_type]
+families_type = families[families["repeat_type_name"] == repeat_type]
 
 # %%
 repeats_type.sample(10, random_state=5).sort_index()

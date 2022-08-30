@@ -129,30 +129,30 @@ class RepeatSequenceDataset(torch.utils.data.Dataset):
 
         return repeat_list
 
-    def get_the_corresponding_repeat(self, anno_df, start, end):
-        repeats_in_sequence = anno_df.loc[
+    def get_the_corresponding_repeat(self, annotations, start, end):
+        repeats_in_sequence = annotations.loc[
             (
-                (anno_df["start"] >= start)
-                & (anno_df["end"] <= end)
-                & (anno_df["start"] < anno_df["end"])
+                (annotations["start"] >= start)
+                & (annotations["end"] <= end)
+                & (annotations["start"] < annotations["end"])
             )
             # ----------------------------
             # ^seq_start                  ^seq_end
             #             -----------------------
             #             ^rep_start            ^rep_end
             | (
-                (anno_df["start"] < end)
-                & (end < anno_df["end"])
-                & (anno_df["start"] < anno_df["end"])
+                (annotations["start"] < end)
+                & (end < annotations["end"])
+                & (annotations["start"] < annotations["end"])
             )
             #            ----------------------------
             #            ^seq_start                  ^seq_end
             # -----------------------
             # ^rep_start            ^rep_end
             | (
-                (anno_df["start"] < start)
-                & (start < anno_df["end"])
-                & (anno_df["start"] < anno_df["end"])
+                (annotations["start"] < start)
+                & (start < annotations["end"])
+                & (annotations["start"] < annotations["end"])
             )
         ]
         return repeats_in_sequence
@@ -161,10 +161,11 @@ class RepeatSequenceDataset(torch.utils.data.Dataset):
         repeat_list = []
         for index in tqdm(range(len(genome) // (self.segment_length - self.overlap))):
             genome_index = index * (self.segment_length - self.overlap)
-            anno_df = annotations
             start = genome_index
             end = genome_index + self.segment_length
-            repeats_in_sequence = self.get_the_corresponding_repeat(anno_df, start, end)
+            repeats_in_sequence = self.get_the_corresponding_repeat(
+                annotations, start, end
+            )
             if not repeats_in_sequence.empty:
                 repeats_in_sequence = repeats_in_sequence.apply(
                     lambda x: [

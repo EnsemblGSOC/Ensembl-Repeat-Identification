@@ -132,12 +132,12 @@ def generate_hits_dataframe_pickle(genome_assembly):
     logger.info(
         "adding repeat type and subtype names to the repeats annotation DataFrame..."
     )
-    hits["repeat_type_name"] = (
+    hits["repeat_type"] = (
         hits[~hits["family_acc"].map(families_dict).isna()]["family_acc"]
         .map(families_dict)
         .apply(lambda x: x.get("repeat_type_name"))
     )
-    hits["repeat_subtype_name"] = (
+    hits["repeat_subtype"] = (
         hits[~hits["family_acc"].map(families_dict).isna()]["family_acc"]
         .map(families_dict)
         .apply(lambda x: x.get("repeat_subtype_name"))

@@ -2,17 +2,20 @@
 import gzip
 import hashlib
 import logging
+import math
 import pathlib
 import shutil
 import sys
 
-from typing import List, Type, Union
+from typing import Type, Union
 
 # third party
 import pandas as pd
 import requests
 import torch
 
+from pyfaidx import Fasta
+from pytorch_lightning.utilities import AttributeDict
 from torchvision import transforms
 from tqdm import tqdm
 
@@ -126,150 +129,52 @@ class RepeatSequenceDataset(torch.utils.data.Dataset):
     def __init__(
         self,
         genome_fasta_path: Union[str, pathlib.Path],
-        annotation_path: Union[str, pathlib.Path],
-        chromosomes: List[str],
+        hits_pickle_path: Union[str, pathlib.Path],
         dna_sequence_mapper: Type[DnaSequenceMapper],
-        segment_length: int = 2000,
-        overlap: int = 500,
+        configuration: AttributeDict,
         transform=None,
     ):
         super().__init__()
 
-        self.chromosomes = chromosomes
         self.dna_sequence_mapper = dna_sequence_mapper
-        self.path = [
-            f"{genome_fasta_path}/{chromosome}.fa" for chromosome in self.chromosomes
-        ]
-        self.annotation = [
-            f"{annotations_path}/hg38_{chromosome}.csv"
-            for chromosome in self.chromosomes
-        ]
-
-        self.segment_length = segment_length
-        self.overlap = overlap
         self.transform = transform
-        self.repeat_list = self.select_chr()
 
-        repeat_types = self.get_unique_categories()
-        print(len(repeat_types), repeat_types)
+        self.chromosomes = configuration.chromosomes
+        self.repeat_types = configuration.repeat_types
+        self.segment_length = configuration.segment_length
+        self.overlap = configuration.overlap
+
+        # open genome FASTA file
+        self.genome = Fasta(genome_fasta_path)
+
+        # load genome repeats annotation and filter hits by chromosome and repeat type
+        logger.info("loading genome repeats annotation...")
+        hits = pd.read_pickle(hits_pickle_path)
+        hits = hits.loc[hits["seq_name"].isin(self.chromosomes)]
+        hits = hits.loc[hits["repeat_type"].isin(self.repeat_types)]
+        self.hits = hits
+
+        logger.info("generating repeats segments list...")
+        # # TODO
+        self.samples = self.generate_samples()
+        # print(samples[0])
+        # print(samples[-1])
+        # print(len(samples))
+        # exit()
+
+        # logger.info("dataset loading complete")
+
+        repeat_types = sorted(self.hits["repeat_type"].dropna().unique().tolist())
         self.repeat_type_mapper = CategoryMapper(repeat_types)
 
-    def get_unique_categories(self):
-        df_list = [
-            pd.read_csv(annotation_path, sep="\t", names=["start", "end", "subtype"])
-            for annotation_path in self.annotation
-        ]
-        return sorted(pd.concat(df_list)["subtype"].unique().tolist())
+    def __len__(self):
+        return len(self.samples)
 
-    def select_chr(self):
-        repeat_list = []
-        for fasta_path, chromosome, annotation_path in zip(
-            self.path, self.chromosomes, self.annotation
-        ):
-            annotation_path = pathlib.Path(annotation_path)
-            segments_repeats_pickle_path = (
-                data_directory / annotation_path.name.replace(".csv", ".pickle")
-            )
-
-            # load the segments_with_repeats list from disk if it has already been generated
-            if segments_repeats_pickle_path.is_file():
-                with open(segments_repeats_pickle_path, "rb") as pickle_file:
-                    segments_with_repeats = pickle.load(pickle_file)
-            else:
-                genome = Fasta(fasta_path)[chromosome]
-                annotations = pd.read_csv(
-                    annotation_path, sep="\t", names=["start", "end", "subtype"]
-                )
-                segments_with_repeats = self.get_segments_with_repeats(
-                    genome, annotations
-                )
-
-                # save the segments_with_repeats list as a pickle file
-                with open(segments_repeats_pickle_path, "wb") as pickle_file:
-                    pickle.dump(segments_with_repeats, pickle_file)
-
-            repeat_list.extend(segments_with_repeats)
-
-        return repeat_list
-
-    def get_the_corresponding_repeat(self, anno_df, start, end):
-        repeats_in_sequence = anno_df.loc[
-            (
-                (anno_df["start"] >= start)
-                & (anno_df["end"] <= end)
-                & (anno_df["start"] < anno_df["end"])
-            )
-            # ----------------------------
-            # ^seq_start                  ^seq_end
-            #             -----------------------
-            #             ^rep_start            ^rep_end
-            | (
-                (anno_df["start"] < end)
-                & (end < anno_df["end"])
-                & (anno_df["start"] < anno_df["end"])
-            )
-            #            ----------------------------
-            #            ^seq_start                  ^seq_end
-            # -----------------------
-            # ^rep_start            ^rep_end
-            | (
-                (anno_df["start"] < start)
-                & (start < anno_df["end"])
-                & (anno_df["start"] < anno_df["end"])
-            )
-        ]
-        return repeats_in_sequence
-
-    def get_segments_with_repeats(self, genome, annotations):
-        repeat_list = []
-        for index in tqdm(range(len(genome) // (self.segment_length - self.overlap))):
-            genome_index = index * (self.segment_length - self.overlap)
-            anno_df = annotations
-            start = genome_index
-            end = genome_index + self.segment_length
-            repeats_in_sequence = self.get_the_corresponding_repeat(anno_df, start, end)
-            if not repeats_in_sequence.empty:
-                repeats_in_sequence = repeats_in_sequence.apply(
-                    lambda x: [
-                        max(start, x["start"]),
-                        min(end, x["end"]),
-                        x["subtype"],
-                    ],
-                    axis=1,
-                    result_type="broadcast",
-                )
-                repeat_list.append(
-                    (genome[start:end].seq.upper(), start, repeats_in_sequence)
-                )
-        return repeat_list
-
-    def forward_strand(self, index):
-        sequence, start, repeats_in_sequence = self.repeat_list[index]
-        # end = start + self.segment_length
-
-        sample = {"sequence": sequence, "start": start}
-
-        repeat_ids_series = repeats_in_sequence["subtype"].map(
-            self.repeat_type_mapper.label_to_index
-        )
-        repeat_ids_array = np.array(repeat_ids_series, np.int32)
-        repeat_ids_tensor = torch.tensor(repeat_ids_array, dtype=torch.long)
-
-        coordinates = repeats_in_sequence[["start", "end"]]
-        sample, coordinates = self.transform((sample, coordinates))
-
-        target = {
-            "seq_start": [start for _ in range(coordinates.shape[0])],
-            "classes": repeat_ids_tensor,
-            "coordinates": coordinates,
-        }
-        return (sample, target)
-
-    def seq2seq(self, index):
-        sequence, start, repeats_in_sequence = self.repeat_list[index]
+    def __getitem__(self, index):
+        sequence, start, segment_repeats = self.samples[index]
         end = start + self.segment_length
 
-        repeat_ids_series = repeats_in_sequence["subtype"].map(
+        repeat_ids_series = segment_repeats["repeat_type"].map(
             self.repeat_type_mapper.label_to_index
         )
         repeat_ids_array = np.array(repeat_ids_series, np.int32)
@@ -277,7 +182,7 @@ class RepeatSequenceDataset(torch.utils.data.Dataset):
 
         sample = {"sequence": sequence, "start": start}
 
-        coordinates = repeats_in_sequence[["start", "end"]]
+        coordinates = segment_repeats[["start", "end"]]
         sample, coordinates = self.transform((sample, coordinates))
         sample = sample["sequence"]
         target = sample.clone().detach()
@@ -301,27 +206,103 @@ class RepeatSequenceDataset(torch.utils.data.Dataset):
         )
         return sample, target
 
-    def __getitem__(self, index):
-        return self.seq2seq(index)
+    def generate_samples(self):
+        """
+        Iterate over all segments in `chromosomes` according to `segment_length` and `overlap`,
+        and save a list of the segments that contain a repeat of type in `repeat_types`.
+        """
+        selected_columns = ["seq_name", "ali-st", "ali-en", "repeat_type"]
+        renamed_columns = ["chromosome", "start", "end", "repeat_type"]
+        rename_columns_dict = dict(zip(selected_columns, renamed_columns))
 
-    def __len__(self):
-        return len(self.repeat_list)
+        samples = []
+        for chromosome in self.chromosomes:
+            chromosome_length = len(self.genome[chromosome])
+            num_segments = math.floor(
+                (chromosome_length - self.overlap)
+                / (self.segment_length - self.overlap)
+            )
+            for index in tqdm(
+                range(num_segments), desc=f"generating {chromosome} samples"
+            ):
+                start = index * (self.segment_length - self.overlap)
+                end = start + self.segment_length
+                segment_repeats = self.get_segment_repeats(chromosome, start, end)
 
-    def collate_fn(self, batch):
-        sequences = [data[0]["sequence"] for data in batch]
-        seq_starts = [data[0]["start"] for data in batch]
-        labels = [data[1] for data in batch]
-        return torch.stack(sequences), seq_starts, labels
+                if not segment_repeats.empty:
+                    # breakpoint()
+                    # print(segment_repeats)
+                    segment_repeats = segment_repeats[selected_columns]
+                    # print(segment_repeats)
+                    segment_repeats = segment_repeats.rename(
+                        columns=rename_columns_dict
+                    )
+                    # print(segment_repeats)
+                    segment_repeats = segment_repeats.apply(
+                        lambda x: [
+                            x["chromosome"],
+                            max(start, x["start"]),
+                            min(end, x["end"]),
+                            x["repeat_type"],
+                        ],
+                        axis=1,
+                        result_type="broadcast",
+                    )
+                    # print(segment_repeats)
+                    # print(self.genome[chromosome][start:end].seq)
+                    samples.append(
+                        (
+                            self.genome[chromosome][start:end].seq.upper(),
+                            start,
+                            segment_repeats,
+                        )
+                    )
+                    # print(samples[-1])
+                    # if len(segment_repeats) > 2:
+                    #     exit()
+                    # print()
+            return samples
+
+    def get_segment_repeats(self, chromosome, start, end):
+        """
+        Get `chromosome` segment `start` - `end` repeat hits.
+
+        Currently implemented only for the forward strand.
+        """
+        hits = self.hits
+
+        # print(hits.head())
+        # exit()
+
+        # breakpoint()
+
+        segment_repeats = hits.loc[
+            # select chromosome
+            (hits["seq_name"] == chromosome)
+            # select forward strand repeats
+            & (hits["ali-st"] < hits["ali-en"])
+            & (
+                # ----------------------------
+                # ^seq_start                  ^seq_end
+                #             ---------- ...
+                #             ^rep_start
+                ((start <= hits["ali-st"]) & (hits["ali-st"] < end))
+                # ----------------------------
+                # ^seq_start                  ^seq_end
+                #    ...------------
+                #                  ^rep_end
+                | ((start < hits["ali-en"]) & (hits["ali-en"] <= end))
+            )
+        ]
+        return segment_repeats
 
 
 def generate_seq2seq_dataloaders(configuration):
     dna_sequence_mapper = DnaSequenceMapper()
     dataset = RepeatSequenceDataset(
-        genome_fasta_path="./data/genome_assemblies/datasets",
-        annotations_path="./data/annotations",
-        chromosomes=configuration.chromosomes,
-        segment_length=configuration.segment_length,
-        overlap=configuration.overlap,
+        genome_fasta_path=genomes_directory / f"{configuration.dataset_id}.fa",
+        hits_pickle_path=data_directory / f"{configuration.dataset_id}_hits.pickle",
+        configuration=configuration,
         dna_sequence_mapper=dna_sequence_mapper,
         transform=transforms.Compose(
             [
