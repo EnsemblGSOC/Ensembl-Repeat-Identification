@@ -10,6 +10,7 @@ from torch import nn, Tensor
 import pytorch_lightning as pl
 import numpy as np
 from torch.nn import Transformer
+from torchmetrics import MeanSquaredError
 
 # project
 from utils import logger
@@ -71,6 +72,9 @@ class Seq2SeqTransformer(pl.LightningModule):
         self.src_tok_emb = TokenEmbedding(src_vocab_size, emb_size)
         self.tgt_tok_emb = TokenEmbedding(tgt_vocab_size, emb_size)
         self.positional_encoding = PositionalEncoding(emb_size, dropout=dropout)
+        self.train_rmse = MeanSquaredError()
+        self.test_rmse = MeanSquaredError()
+        self.val_rmse = MeanSquaredError()
 
     def forward(
         self,
@@ -135,8 +139,32 @@ class Seq2SeqTransformer(pl.LightningModule):
         logits = self.forward(samples, tar_input, src_mask, tgt_mask)
         loss_fn = torch.nn.CrossEntropyLoss()
         loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tar_output.reshape(-1))
+        predict_class = torch.argmax(logits, axis=2)
         self.log("train_loss", loss)
+        self.log(
+            "train_rmse",
+            self.get_rmse_result(
+                tar_output[:, :-1], predict_class[:, :-1], self.train_rmse
+            ),
+        )
         return loss
+
+    def get_repeat_label(self, seq):
+        seq = seq.clone().detach()
+        for b in range(seq.shape[0]):
+            for c in range(seq.shape[1]):
+                if (
+                    seq[b][c]
+                    < self.configuration.dna_sequence_mapper.num_nucleobase_letters
+                ):
+                    seq[b][c] = 0
+                else:
+                    seq[b][c] = 1
+        return seq
+
+    def get_rmse_result(self, label, target, rmse):
+        label, target = self.get_repeat_label(label), self.get_repeat_label(target)
+        return rmse(label, target)
 
     def on_test_start(self):
         self.targets = torch.empty(0).to(self.device)
@@ -192,6 +220,12 @@ class Seq2SeqTransformer(pl.LightningModule):
             self.predict_targets = self.predict_targets[-100:, :]
         self.targets = torch.cat((self.targets, tar_input[:, 1:]))
         self.predict_targets = torch.cat((self.predict_targets, predict_class[:, :-1]))
+        self.log(
+            "test_rmse",
+            self.get_rmse_result(
+                tar_output[:, :-1], predict_class[:, :-1], self.test_rmse
+            ),
+        )
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -202,8 +236,15 @@ class Seq2SeqTransformer(pl.LightningModule):
         logits = self.forward(samples, tar_input, src_mask, tgt_mask)
         loss_fn = torch.nn.CrossEntropyLoss()
         loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tar_output.reshape(-1))
+        predict_class = torch.argmax(logits, axis=2)
 
         self.log("validation_loss", loss)
+        self.log(
+            "val_rmse",
+            self.get_rmse_result(
+                tar_output[:, :-1], predict_class[:, :-1], self.val_rmse
+            ),
+        )
         return loss
 
     def configure_optimizers(self):
