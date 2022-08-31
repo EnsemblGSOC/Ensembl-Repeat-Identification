@@ -144,8 +144,9 @@ class Seq2SeqTransformer(pl.LightningModule):
         self.log("train_loss", loss)
         self.log(
             "train_rmse",
-            self.get_rmse_result(
-                tar_output[:, :-1], predict_class[:, :-1], self.train_rmse
+            self.train_rmse(
+                self.get_repeat_label(tar_output[:, :-1]),
+                self.get_repeat_label(predict_class[:, :-1]),
             ),
         )
         return loss
@@ -154,10 +155,6 @@ class Seq2SeqTransformer(pl.LightningModule):
         seq = seq.clone().detach()
         seq = seq >= self.configuration.dna_sequence_mapper.num_nucleobase_letters
         return seq
-
-    def get_rmse_result(self, label, target, rmse):
-        label, target = self.get_repeat_label(label), self.get_repeat_label(target)
-        return rmse(label, target)
 
     def on_test_start(self):
         self.targets = torch.empty(0).to(self.device)
@@ -216,10 +213,12 @@ class Seq2SeqTransformer(pl.LightningModule):
         self.predict_targets = torch.cat((self.predict_targets, predict_class[:, :-1]))
         self.log(
             "test_rmse",
-            self.get_rmse_result(
-                tar_output[:, :-1], predict_class[:, :-1], self.test_rmse
+            self.test_rmse(
+                self.get_repeat_label(tar_output[:, :-1]),
+                self.get_repeat_label(predict_class[:, :-1]),
             ),
         )
+
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -236,8 +235,9 @@ class Seq2SeqTransformer(pl.LightningModule):
         self.log("validation_loss", loss)
         self.log(
             "val_rmse",
-            self.get_rmse_result(
-                tar_output[:, :-1], predict_class[:, :-1], self.val_rmse
+            self.val_rmse(
+                self.get_repeat_label(tar_output[:, :-1]),
+                self.get_repeat_label(predict_class[:, :-1]),
             ),
         )
         return loss
