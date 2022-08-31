@@ -137,8 +137,9 @@ class Seq2SeqTransformer(pl.LightningModule):
         src_mask, tgt_mask = self.create_mask(samples, tar_input)
         tar_output = targets[:, 1:]
         logits = self.forward(samples, tar_input, src_mask, tgt_mask)
-        loss_fn = torch.nn.CrossEntropyLoss()
-        loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tar_output.reshape(-1))
+        loss = F.cross_entropy(
+            logits.reshape(-1, logits.shape[-1]), tar_output.reshape(-1)
+        )
         predict_class = torch.argmax(logits, axis=2)
         self.log("train_loss", loss)
         self.log(
@@ -151,15 +152,7 @@ class Seq2SeqTransformer(pl.LightningModule):
 
     def get_repeat_label(self, seq):
         seq = seq.clone().detach()
-        for b in range(seq.shape[0]):
-            for c in range(seq.shape[1]):
-                if (
-                    seq[b][c]
-                    < self.configuration.dna_sequence_mapper.num_nucleobase_letters
-                ):
-                    seq[b][c] = 0
-                else:
-                    seq[b][c] = 1
+        seq = seq >= self.configuration.dna_sequence_mapper.num_nucleobase_letters
         return seq
 
     def get_rmse_result(self, label, target, rmse):
@@ -211,8 +204,9 @@ class Seq2SeqTransformer(pl.LightningModule):
         src_mask, tgt_mask = self.create_mask(samples, tar_input)
         tar_output = targets[:, 1:]
         logits = self.forward(samples, tar_input, src_mask, tgt_mask)
-        loss_fn = torch.nn.CrossEntropyLoss()
-        loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tar_output.reshape(-1))
+        loss = F.cross_entropy(
+            logits.reshape(-1, logits.shape[-1]), tar_output.reshape(-1)
+        )
         self.log("test_loss", loss)
         predict_class = torch.argmax(logits, axis=2)
         if self.targets.shape[0] > 100:
@@ -234,8 +228,9 @@ class Seq2SeqTransformer(pl.LightningModule):
         src_mask, tgt_mask = self.create_mask(samples, tar_input)
         tar_output = targets[:, 1:]
         logits = self.forward(samples, tar_input, src_mask, tgt_mask)
-        loss_fn = torch.nn.CrossEntropyLoss()
-        loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tar_output.reshape(-1))
+        loss = F.cross_entropy(
+            logits.reshape(-1, logits.shape[-1]), tar_output.reshape(-1)
+        )
         predict_class = torch.argmax(logits, axis=2)
 
         self.log("validation_loss", loss)
