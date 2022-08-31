@@ -100,6 +100,7 @@ def main():
         version=configuration.logging_version,
         default_hp_metric=False,
     )
+
     early_stopping_callback = pl.callbacks.early_stopping.EarlyStopping(
         monitor="validation_loss",
         min_delta=configuration.loss_delta,
@@ -112,7 +113,7 @@ def main():
         logger=tensorboard_logger,
         max_epochs=configuration.max_epochs,
         callbacks=[early_stopping_callback],
-        log_every_n_steps=1,
+        # log_every_n_steps=1,
         profiler=configuration.profiler,
     )
 
@@ -121,6 +122,7 @@ def main():
         train_dataloaders=training_dataloader,
         val_dataloaders=validation_dataloader,
     )
+
     trainer.test(ckpt_path="best", dataloaders=test_dataloader)
 
 
