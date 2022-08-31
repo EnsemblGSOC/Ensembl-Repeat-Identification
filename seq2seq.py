@@ -58,6 +58,7 @@ class Seq2SeqTransformer(pl.LightningModule):
     ):
         super(Seq2SeqTransformer, self).__init__()
         self.configuration = configuration
+        self.sos = configuration.num_classes + configuration.num_nucleobase_letters
         self.transformer = Transformer(
             d_model=emb_size,
             nhead=nhead,
@@ -102,9 +103,10 @@ class Seq2SeqTransformer(pl.LightningModule):
         )
 
     def decode(self, tgt: Tensor, memory: Tensor, tgt_mask: Tensor):
-        return self.transformer.decoder(
+        outs = self.transformer.decoder(
             self.positional_encoding(self.tgt_tok_emb(tgt)), memory, tgt_mask
         )
+        return self.generator(outs)
 
     def generate_square_subsequent_mask(self, sz):
         mask = (torch.triu(torch.ones((sz, sz), device=self.device)) == 1).transpose(
@@ -126,6 +128,12 @@ class Seq2SeqTransformer(pl.LightningModule):
             torch.bool
         )
         return src_mask, tgt_mask
+
+    def create_tgt_mask(self, tgt):
+        tgt_seq_len = tgt.shape[1]
+
+        tgt_mask = self.generate_square_subsequent_mask(tgt_seq_len)
+        return tgt_mask
 
     def training_step(self, batch, batch_idx):
         samples, targets = batch
@@ -186,13 +194,27 @@ class Seq2SeqTransformer(pl.LightningModule):
         loss_fn = torch.nn.CrossEntropyLoss()
         loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tar_output.reshape(-1))
         self.log("test_loss", loss)
-        predict_class = torch.argmax(logits, axis=2)
+        predict_class = self.predict(samples)[:, :-1]
         if self.targets.shape[0] > 100:
             self.targets = self.targets[-100:, :]
             self.predict_targets = self.predict_targets[-100:, :]
         self.targets = torch.cat((self.targets, tar_input[:, 1:]))
-        self.predict_targets = torch.cat((self.predict_targets, predict_class[:, :-1]))
+        self.predict_targets = torch.cat((self.predict_targets, predict_class))
+
         return loss
+
+    def predict(self, x: torch.Tensor) -> torch.Tensor:
+        encoded_x = self.encode(x, None)
+        output_tokens = (
+            (torch.ones((x.shape[0], 2001))).type_as(x).long()
+        )  # (B, max_length)
+        output_tokens[:, 0] = self.sos  # Set start token
+        for Sy in range(1, 2001):
+            y = output_tokens[:, :Sy]  # (B, Sy)
+            output = self.decode(y, encoded_x, None)  # (B, Sy, C)
+            output = torch.argmax(output, dim=-1)  # (B, Sy)
+            output_tokens[:, Sy] = output[:, -1]  # Set the last output token
+        return output_tokens
 
     def validation_step(self, batch, batch_idx):
         samples, targets = batch
@@ -202,8 +224,9 @@ class Seq2SeqTransformer(pl.LightningModule):
         logits = self.forward(samples, tar_input, src_mask, tgt_mask)
         loss_fn = torch.nn.CrossEntropyLoss()
         loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tar_output.reshape(-1))
+        self.log("val_loss", loss)
+        predict_class = self.predict(samples)[:, :-1]
 
-        self.log("validation_loss", loss)
         return loss
 
     def configure_optimizers(self):
