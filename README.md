@@ -10,7 +10,7 @@
 A number of tools exist for identifying repeat features, but it remains a problem that the DNA sequence of some genes can be identified as being a repeat sequence. If such sequences are used to mask the genome, genes may be missed in the downstream annotation. Assuming that gene sequences have various signatures relating to their function and that repeats have different signatures including the repetitive nature of the signal itself, we want to train a classifier to separate the repeat sequences from the gene sequences. We are inspired by DETR, an object detection model, this proposal will use transformer structure to complete the identify repeat sequence task, our model will unify segmentation and classification into one like the object detection model.
 ## Network architecture
 ![](fig/DETRmodel.png)
-We need input the sequence as input, and the output will be the location and type of repeat.
+The input of the model is subsequence, and the output will be `where` and `type` of each subsequence. More data meaning can be found in [the visualization in the model](#the-visualization-in-the-model) 
 ## Requirements:
 1. A machine with atleast **8GB of RAM** (although **16-32GB** is recommended. A single GPU machine would suffice. The model can be trained on CPU as well but will be a lot faster if trained on a GPU.<br/><br/>
 2. A stable Internet Connection.<br/><br/>
@@ -135,27 +135,59 @@ num_sample_predictions: 5
 ```
 <br/>
 
-## The visualized result of DETR prediction:
-<br/>
-Visualizing the predictions of the network will help us understand them better and debug and finetune the model. The result will looks like:
-<br/>
-```
-ground truth: TCCCTCCCTCCTTC444444444444444444444444444444444CTCAGCAGTCGCT
-prediction: TCCCTCCCT444444444444444444444444445555555CATTCCTCAGCAGTCGCT
-```
-<br/>
+## The visualization in the model:
 
+Visualizing the predictions of the network will help us understand them better and debug and finetune the model. <br/>
+During testing, for a raw sequence we have its repeat annotation:
+<br/>
+```shell
+raw sequence: AGAACCTATTATTTGCATGA'CATTCATGCATGC'TAGAAGAAACCTGTATTTTTTTCATCA
+
+raw sequence: AGAACCTATTATTTGCATGA'cattcatgcatgc'TAGAAGAAACCTGTATTTTTTTCATCA
+
+annotation(ground truth): AGAACCTATTATTTGCATGA🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑TAGAAGAAACCTGTATTTTTTTCATCA
+```
+The trained model should get the raw sequence as input, excluding the repeat annotation:
+```shell
+raw sequence: AGAACCTATTATTTGCATGA'CATTCATGCATGC'TAGAAGAAACCTGTATTTTTTTCATCA
+```
+And then we would get sample predictions, compared to the ground truth:
+```shell
+ground truth: AGAACCTATTATTTGCATGA🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑TAGAAGAAACCTGTATTTTTTTCATCA
+  prediction: AGAACCTATTATTTGCATGA'CATTCATGCATGC'TAGAAGAAACCTGTATTTTTTTCATCA
+```
+Wrong prediction, the model didn't find any repeats:
+```shell
+ground truth: AGAACCTATTATTTGCATGA🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑TAGAAGAAACCTGTATTTTTTTCATCA
+  prediction: AG🍉🍉🍉🍉🍉🍉🍉🍉🍉'CATTCATGCATGC' TAGAAGAAACCTGTATTTTTTTCATCA
+```
+Wrong prediction, the model predicted a repeat of a different type in a different location:
+```shell
+ground truth: AGAACCTATTATTTGCATGA🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑TAGAAGAAACCTGTATTTTTTTCATCA
+  prediction: AGAACCTATTATTTGCATGA'CATTCA'🥑🥑🥑🥑🥑🥑🥑TAGAAGAAACCTGTATTTTTTTCATCA
+```
+This is the perfect prediction👇:
+```shell
+ground truth: AGAACCTATTATTTGCATGA🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑TAGAAGAAACCTGTATTTTTTTCATCA
+  prediction: AGAACCTATTATTTGCATGA🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑TAGAAGAAACCTGTATTTTTTTCATCA
+```
+
+
+<br/>
 ## Further step
-We also provide the alternative way to identity repeat region, in here the transformer model is used, due to time limit, there is no much results here. This project is still under development.<br/>
+As the DETR model did not learn so much, and the model is so complicated，it is hard to debug, so we also provide the alternative way to identity repeat region, in here the transformer model is used, due to time limit, there is no much results here. This project is still under development.<br/>
 **Alternative model architecture**
 ![](fig/newnetwork.gif)
-**The visualized result of prediction**
-This model is simple than DETR, but it also can get the repeat region. The visualized output will looks like:
-```
-**********🍓🍓🍓🍓🍓🍓*********🍓🍓🍓🍓🍓🍓*****
+
+This model is simple than DETR, but it also can get the repeat region and it have the same input as DETR. The visualized output will looks like:
+```shell
+ground truth:AGAACCTATT🍓🍓🍓🍓🍓🍓TAGAAGAAA🍓🍓🍓🍓🍓🍓ATCAG
+  prediction:**********🍓🍓🍓🍓🍓🍓*********🍓🍓🍓🍓🍓🍓*****
 ```
 Each '*' represent the base is not repeat region, each '🍓' represent the repeat region include its type.
-
+**Important note:**
+The validation loss value is being calculated erroneously. The label is wrongly feeded into the validation stage, this is
+what we should avoid, I will continue fixing it. 
 ## Research papers / References
 #### Some of the papers which have been published in recognizing repeat sequence: <br/>
 1. [Automated De Novo Identification of Repeat Sequence Families in Sequenced Genomes](https://genome.cshlp.org/content/12/8/1269.short)<br/>
