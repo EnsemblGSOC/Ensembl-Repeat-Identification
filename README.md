@@ -23,22 +23,17 @@ pyenv virtualenv 3.9.12 repeat_identification
 poetry install
 ```
 
- ## Data Preparation:
+ ## Data Generation:
 The model uses fasta and its paired annotation to make predictions. <br/>
 **Download And Generate Required Files:**
-
-Download a genome assembly, initially the human reference genome `GRCh38` (called hg38 by Dfam), from the UCSC Genome Browser.
-
-Download repeat annotations from [Dfam](https://www.dfam.org/home) and generate a subset of the annotations by selecting the desired repeat family or subtype. The selected annotations are saved as the repeat boundaries to create the sequence segmentation dataset.
-
 In order to download and generate needed files should run:
 ```shell
-python generate_dataset.py --species
+python generate_dataset.py --species hg38 --configuration configuration.yaml
 ```
-If you use human genome run like: `python generate_dataset.py --species hg38 --configuration configuration.yaml`<br/>
-All of the option can add personalized configuration by `configuration.yaml`
+This script will simultaneously down genome assembly file and repeat annotations. The genome assembly file is the human reference genome `GRCh38` (called hg38 by Dfam), from the UCSC Genome Browser and the repeat annotations from [Dfam](https://www.dfam.org/home). It will generate a subset of the annotations by selecting the desired repeat family or subtype. 
 
-And the generated files will seperate by chromosome, and the generated file will looks like:
+All of the option can add personalized configuration by `configuration.yaml`. The dataset will be saved in the `data` folder, the content should be like the following.
+
 ```shell
 >data
 >>genome_assemblies
@@ -76,13 +71,10 @@ experiment_prefix: standard
 ################################################################################
 chromosomes: ['chr1']
 dataset_id: hg38
-#chromosomes: ['chr10']
 segment_length: 2000
 overlap: 500
 num_queries: 10
-#repeat_types: ["LTR", "DNA", "LINE", "SINE", "RC", "Retroposon", "PLE", "Satellite", "tRNA", "snRNA", "rRNA", "scRNA"]
-repeat_types: ["DNA"]
-dataset_size: 10
+repeat_types: ["LTR", "DNA", "LINE", "SINE", "RC", "Retroposon", "PLE", "Satellite", "tRNA", "snRNA", "rRNA", "scRNA"]
 ################################################################################
 
 ```
@@ -90,7 +82,7 @@ Additionally, the length of subsequence can be defined by user, but it would not
 <br/>
 
 ## Train the Model:
- You are gonna train your own model in `model.py` script..<br/>
+
 To train the model, run:<br/>
 ```shell
 python train.py --configuration configuration.yaml
@@ -137,62 +129,31 @@ num_sample_predictions: 5
 
 ## The visualization in the model:
 
-Visualizing the predictions of the network will help us understand them better and debug and finetune the model. <br/>
-During testing, for a raw sequence we have its repeat annotation:
+Visualizing the predictions of the network will help us understand them better and debug and finetune the model, during testing, for a raw sequence we have its repeat annotation:
 <br/>
 ```shell
 raw sequence: AGAACCTATTATTTGCATGA'CATTCATGCATGC'TAGAAGAAACCTGTATTTTTTTCATCA
-
-raw sequence: AGAACCTATTATTTGCATGA'cattcatgcatgc'TAGAAGAAACCTGTATTTTTTTCATCA
-
-annotation(ground truth): AGAACCTATTATTTGCATGA🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑TAGAAGAAACCTGTATTTTTTTCATCA
-```
-The trained model should get the raw sequence as input, excluding the repeat annotation:
-```shell
-raw sequence: AGAACCTATTATTTGCATGA'CATTCATGCATGC'TAGAAGAAACCTGTATTTTTTTCATCA
-```
-And then we would get sample predictions, compared to the ground truth:
-```shell
-ground truth: AGAACCTATTATTTGCATGA🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑TAGAAGAAACCTGTATTTTTTTCATCA
-  prediction: AGAACCTATTATTTGCATGA'CATTCATGCATGC'TAGAAGAAACCTGTATTTTTTTCATCA
-```
-Wrong prediction, the model didn't find any repeats:
-```shell
-ground truth: AGAACCTATTATTTGCATGA🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑TAGAAGAAACCTGTATTTTTTTCATCA
-  prediction: AG🍉🍉🍉🍉🍉🍉🍉🍉🍉'CATTCATGCATGC'TAGAAGAAACCTGTATTTTTTTCATCA
-```
-Wrong prediction, the model predicted a repeat of a different type in a different location:
-```shell
-ground truth: AGAACCTATTATTTGCATGA🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑TAGAAGAAACCTGTATTTTTTTCATCA
-  prediction: AGAACCTATTATTTGCATGA'CATTCA'🥑🥑🥑🥑🥑🥑🥑TAGAAGAAACCTGTATTTTTTTCATCA
-```
-This is the perfect prediction👇:
-```shell
-ground truth: AGAACCTATTATTTGCATGA🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑TAGAAGAAACCTGTATTTTTTTCATCA
-  prediction: AGAACCTATTATTTGCATGA🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑TAGAAGAAACCTGTATTTTTTTCATCA
+annotation: AGAACCTATTATTTGCATGA🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑TAGAAGAAACCTGTATTTTTTTCATCA
 ```
 
-
-<br/>
 ## Further step
-As the DETR model did not learn so much, and the model is so complicated，it is hard to debug, so we also provide the alternative way to identity repeat region, in here the transformer model is used, due to time limit, there is no much results here. This project is still under development.<br/>
+After some experiments, we found the prediction results of the DETR model is not good, so we also explore the alternative way to identity repeat region, in here the vanilla transformer model is used.<br/>
 **Alternative model architecture**
 ![](fig/newnetwork.gif)
-
-This model is simple than DETR, but it also can get the repeat region and it have the same input as DETR. The visualized output will looks like:
+This model is simple than DETR, it take the raw DNA sequence as input, and it will produce the DNA sequence with the repeat region.
+The visualized output looks like the following:
 ```shell
 ground truth:AGAACCTATT🍓🍓🍓🍓🍓🍓TAGAAGAAA🍓🍓🍓🍓🍓🍓ATCAG
   prediction:**********🍓🍓🍓🍓🍓🍓*********🍓🍓🍓🍓🍓🍓*****
 ```
-Each '*' represent the base is not repeat region, each '🍓' represent the repeat region include its type.
+Each `*` represent the base is not repeat region, each `🍓` represent the repeat region include its type.
 **Important note:**
 The validation loss value is being calculated erroneously. The label is wrongly feeded into the validation stage, this is
-what we should avoid, I will continue fixing it. 
+what we should avoid, I will continue to fix it. 
 ## Research papers / References
-#### Some of the papers which have been published in recognizing repeat sequence: <br/>
-1. [Automated De Novo Identification of Repeat Sequence Families in Sequenced Genomes](https://genome.cshlp.org/content/12/8/1269.short)<br/>
 
-2. [Fast and global detection of periodic sequence repeats in large genomic resources](https://academic.oup.com/nar/article/47/2/e8/5124599?login=false)<br/>
-
-3. [Patterns of de novo tandem repeat mutations and their role in autism](https://www.nature.com/articles/s41586-020-03078-7)<br/>
+1. [End-to-End Object Detection with Transformers
+](https://arxiv.org/abs/2005.12872)
+2. [Attention Is All You Need
+](https://arxiv.org/abs/1706.03762)
 
