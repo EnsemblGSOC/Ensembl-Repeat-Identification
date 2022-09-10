@@ -159,7 +159,7 @@ ground truth: AGAACCTATTATTTGCATGA🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑�
 Wrong prediction, the model didn't find any repeats:
 ```shell
 ground truth: AGAACCTATTATTTGCATGA🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑🥑TAGAAGAAACCTGTATTTTTTTCATCA
-  prediction: AG🍉🍉🍉🍉🍉🍉🍉🍉🍉'CATTCATGCATGC' TAGAAGAAACCTGTATTTTTTTCATCA
+  prediction: AG🍉🍉🍉🍉🍉🍉🍉🍉🍉'CATTCATGCATGC'TAGAAGAAACCTGTATTTTTTTCATCA
 ```
 Wrong prediction, the model predicted a repeat of a different type in a different location:
 ```shell
