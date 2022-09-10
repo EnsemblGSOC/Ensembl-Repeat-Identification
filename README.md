@@ -7,13 +7,13 @@
 ### Mentors : [Leanne Haggerty](https://www.linkedin.cn/incareer/in/leannehaggerty), [William Stark](https://www.linkedin.cn/incareer/in/williamstarkbio), [Jose Perez-Silva](https://www.linkedin.cn/incareer/in/jos%C3%A9-m%C2%AA-g-p%C3%A9rez-silva-b3959386), [Francesca Tricomi](https://www.linkedin.cn/incareer/in/francesca-tricomi-108916168) <br/><br/>
 
 ## Brief Description
-A number of tools exist for identifying repeat features, but it remains a problem that the DNA sequence of some genes can be identified as being a repeat sequence. If such sequences are used to mask the genome, genes may be missed in the downstream annotation. Assuming that gene sequences have various signatures relating to their function and that repeats have different signatures including the repetitive nature of the signal itself, we want to train a classifier to separate the repeat sequences from the gene sequences. We are inspired by DETR, an object detection model, this proposal will use transformer structure to complete the identify repeat sequence task, our model will unify segmentation and classification into one like the object detection model.
+A number of tools exist for identifying repeat features, but it remains a problem that the DNA sequence of some genes can be identified as being a repeat sequence. If such sequences are used to mask the genome, genes may be missed in the downstream annotation. Assuming that gene sequences have various signatures relating to their function and that repeats have different signatures including the repetitive nature of the signal itself, we want to train a classifier to separate the repeat sequences from the gene sequences. We are inspired by DETR, an object detection model, this project will use transformer structure to complete the identify repeat sequence task, our model will unify segmentation and classification into one like the object detection model.
 ## Network architecture
 ![](fig/DETRmodel.png)
-The input of the model is subsequence, and the output will be `where` and `type` of each subsequence. More data meaning can be found in [the visualization in the model](#the-visualization-in-the-model) 
+The input of the model is subsequence, and the output will be `where` and `type` of each subsequence. More data meaning can be found in [the visualization in the model](#the-visualization-in-the-model).
 ## Requirements:
-1. A machine with atleast **8GB of RAM** (although **16-32GB** is recommended. A single GPU machine would suffice. The model can be trained on CPU as well but will be a lot faster if trained on a GPU.<br/><br/>
-2. A stable Internet Connection.<br/><br/>
+1. A machine with atleast **8GB of RAM** (although **16-32GB** is recommended. A single GPU machine would suffice. The model can be trained on CPU as well but will be a lot faster if trained on a GPU.
+2. A stable Internet Connection.
 3. Set up a development environment with [pyenv](https://github.com/pyenv/pyenv) and [Poetry](https://github.com/python-poetry/poetry):
 ```shell
 pyenv install 3.9.12
@@ -24,7 +24,7 @@ poetry install
 ```
 
  ## Data Generation:
-The model uses fasta and its paired annotation to make predictions. <br/>
+The model uses DNA sequence extract from  genome fasta file and its paired annotation as label as training data <br/>
 **Download And Generate Required Files:**
 In order to download and generate needed files should run:
 ```shell
@@ -32,26 +32,21 @@ python generate_dataset.py --species hg38 --configuration configuration.yaml
 ```
 This script will simultaneously down genome assembly file and repeat annotations. The genome assembly file is the human reference genome `GRCh38` (called hg38 by Dfam), from the UCSC Genome Browser and the repeat annotations from [Dfam](https://www.dfam.org/home). It will generate a subset of the annotations by selecting the desired repeat family or subtype. 
 
-All of the option can add personalized configuration by `configuration.yaml`. The dataset will be saved in the `data` folder, the content should be like the following.
+All of the option can add personalized configuration by `configuration.yaml`. The dataset will be saved in the `data` folder, the contents should be like the following.
 
 ```shell
->data
->>genome_assemblies
->>>hg38.fa
->>>hg38.fa.gz
->>>datasets
-chr1.fa
-chr1.fa.fai
-…………
->>annotations
-hg38_chr10.pickle
->>>
-hg38.hits
-hg38.hits.gz
-hg38_chr14.csv
-hg38_chr7.csv 
-…………
-repeat_families.json
+|____genome_assemblies
+| |____hg38.fa.gz
+| |____datasets
+| | |____chr1.fa
+...
+| | |____*.fa
+|____annotations
+| |____hg38_chr1.csv
+| |____repeat_families.json
+...
+| |____hg38_chr*.csv
+
 ```
 
 <br/>
@@ -60,7 +55,7 @@ repeat_families.json
 **Configuration Parameter:**<br/>
 Some configuration should be defined in this stage.
 ```shell
-# experiment files directory
+# experiment files directory 
 save_directory: experiments
 
 # experiment naming prefix
